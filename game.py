@@ -132,13 +132,17 @@ class CharacterState:
 
         newPos = self.pos + scaled
 
-        if newPos.x < 0 or newPos.x > WORLD_WIDTH - CELL_SIZE:
-            scaled.x = 0
+        if newPos.x < 0:
+            newPos.x = 0
+        elif newPos.x > WORLD_WIDTH - CELL_SIZE:
+            newPos.x = WORLD_WIDTH - CELL_SIZE
 
-        if newPos.y < 0 or newPos.y > WORLD_HEIGHT - (CELL_SIZE * 2):
-            scaled.y = 0
+        if newPos.y < 0:
+            newPos.y = 0
+        elif newPos.y > WORLD_HEIGHT - (CELL_SIZE * 2):
+            newPos.y = WORLD_HEIGHT - (CELL_SIZE * 2)
 
-        self.pos += scaled
+        self.pos = newPos
 
         # using the int values of the direction enums to calculate character direction
         vert = 1
