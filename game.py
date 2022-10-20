@@ -14,8 +14,13 @@ FRAME_LIMIT = 60
 
 CELL_SIZE = 16
 
-BOARD_WIDTH = 32 * CELL_SIZE
-BOARD_HEIGHT = 20 * CELL_SIZE
+DISPLAY_WIDTH = 32 * CELL_SIZE
+DISPLAY_HEIGHT = 20 * CELL_SIZE
+HALF_DISPLAY = Vector2((DISPLAY_WIDTH / 2) - (CELL_SIZE / 2),
+                       (DISPLAY_HEIGHT / 2) - (CELL_SIZE))
+
+WORLD_WIDTH = 40 * CELL_SIZE
+WORLD_HEIGHT = 30 * CELL_SIZE
 
 
 class ActionType(enum.Enum):
@@ -99,16 +104,11 @@ class CharacterState:
     CHARACTER_SPEED = 150
 
     coins: int
-    characterRect: Rect
     pos: pygame.math.Vector2
     dir: Direction
 
     def __init__(self) -> None:
-        self.boardRect = Rect(0, 0, BOARD_WIDTH, BOARD_HEIGHT)
-        self.characterRect = Rect((BOARD_WIDTH / 2) - (CELL_SIZE / 2),
-                                  (BOARD_HEIGHT / 2) - (CELL_SIZE / 2), CELL_SIZE, CELL_SIZE*2)
-
-        self.pos = Vector2(0, 0)
+        self.pos = Vector2((WORLD_WIDTH / 2), (WORLD_HEIGHT / 2))
 
         self.epoch = time.time_ns()
 
@@ -130,6 +130,14 @@ class CharacterState:
         scaled = Vector2(action.x, action.y)
         scaled.scale_to_length(self.CHARACTER_SPEED * scale)
 
+        newPos = self.pos + scaled
+
+        if newPos.x < 0 or newPos.x > WORLD_WIDTH - CELL_SIZE:
+            scaled.x = 0
+
+        if newPos.y < 0 or newPos.y > WORLD_HEIGHT - (CELL_SIZE * 2):
+            scaled.y = 0
+
         self.pos += scaled
 
         # using the int values of the direction enums to calculate character direction
@@ -150,9 +158,9 @@ class Game:
     def __init__(self) -> None:
         pygame.init()
 
-        self.image = Surface((BOARD_WIDTH, BOARD_HEIGHT))
+        self.image = Surface((DISPLAY_WIDTH, DISPLAY_HEIGHT))
         self.display = pygame.display.set_mode(
-            (BOARD_WIDTH, BOARD_HEIGHT), pygame.RESIZABLE)
+            (DISPLAY_WIDTH, DISPLAY_HEIGHT), pygame.RESIZABLE)
 
         self.background = pygame.image.load("./assets/frog.png", "frog")
 
@@ -191,12 +199,26 @@ class Game:
         # Background
         self.image.fill(color.BLACK)
 
+        charPos = self.state.pos
+
+        # Character sprite location on screen
+        spriteX = HALF_DISPLAY.x
+        if charPos.x < HALF_DISPLAY.x:
+            spriteX = charPos.x
+        elif (WORLD_WIDTH - charPos.x) < (HALF_DISPLAY.x + CELL_SIZE):
+            spriteX = DISPLAY_WIDTH - (WORLD_WIDTH - charPos.x)
+
+        spriteY = HALF_DISPLAY.y
+        if charPos.y < HALF_DISPLAY.y:
+            spriteY = charPos.y
+        elif (WORLD_HEIGHT - charPos.y) < (HALF_DISPLAY.y + CELL_SIZE + CELL_SIZE):
+            spriteY = DISPLAY_HEIGHT - (WORLD_HEIGHT - charPos.y)
+
         # Base
         self.image.blit(self.background, (0, 0),
-                        Rect(self.state.pos.x, self.state.pos.y, BOARD_WIDTH, BOARD_HEIGHT))
-
-        # Character sprite
-        self.image.fill(color.MAGENTA, self.state.characterRect)
+                        Rect(charPos.x - spriteX, charPos.y - spriteY, DISPLAY_WIDTH, DISPLAY_HEIGHT))
+        self.image.fill(color.MAGENTA, Rect(
+            spriteX, spriteY, CELL_SIZE, CELL_SIZE * 2))
 
         pygame.transform.scale(
             self.image, self.display.get_size(), self.display)
