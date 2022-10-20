@@ -1,7 +1,6 @@
 import enum
 import os
 import time
-from math import trunc
 from typing import Dict
 
 import pygame
@@ -11,9 +10,9 @@ import color
 
 os.environ['SDL_VIDEO_CENTERED'] = '1'
 
-FRAME_LIMIT = 144
+FRAME_LIMIT = 60
 
-CELL_SIZE = 32
+CELL_SIZE = 16
 
 BOARD_WIDTH = 32 * CELL_SIZE
 BOARD_HEIGHT = 20 * CELL_SIZE
@@ -87,19 +86,29 @@ class CharacterController():
         return actions
 
 
-class GameState:
+class Direction(enum.Enum):
+    UP = 0
+    DOWN = 1
+    LEFT = 2
+    RIGHT = 3
+
+
+class CharacterState:
     epoch: int
 
-    CHARACTER_SPEED = 300
+    CHARACTER_SPEED = 150
 
     coins: int
     characterRect: Rect
-    globalX: float
-    globalY: float
+    pos: pygame.math.Vector2
+    dir: Direction
 
     def __init__(self) -> None:
         self.boardRect = Rect(0, 0, BOARD_WIDTH, BOARD_HEIGHT)
-        self.characterRect = Rect(0, 0, CELL_SIZE, CELL_SIZE*2)
+        self.characterRect = Rect((BOARD_WIDTH / 2) - (CELL_SIZE / 2),
+                                  (BOARD_HEIGHT / 2) - (CELL_SIZE / 2), CELL_SIZE, CELL_SIZE*2)
+
+        self.pos = Vector2(0, 0)
 
         self.epoch = time.time_ns()
 
@@ -121,20 +130,20 @@ class GameState:
         scaled = Vector2(action.x, action.y)
         scaled.scale_to_length(self.CHARACTER_SPEED * scale)
 
-        scaled.x += self.xErr
-        scaled.y += self.yErr
+        self.pos += scaled
 
-        newRect = self.characterRect.move(
-            scaled.x, scaled.y)
+        # using the int values of the direction enums to calculate character direction
+        vert = 1
+        if action.y != 0:
+            vert = int((action.y / 2) + 0.5)
 
-        self.xErr = scaled.x - trunc(scaled.x)
-        self.yErr = scaled.y - trunc(scaled.y)
+        horz = 0
+        if action.x != 0:
+            horz = int((action.x / 2) + 1.5)
 
-        # check moving within board bounds
-        if not self.boardRect.contains(newRect):
-            return
-
-        self.characterRect = Rect(newRect)
+        self.dir = Direction(vert + horz)
+        print(self.pos)
+        print(self.dir)
 
 
 class Game:
@@ -144,11 +153,12 @@ class Game:
         self.image = Surface((BOARD_WIDTH, BOARD_HEIGHT))
         self.display = pygame.display.set_mode(
             (BOARD_WIDTH, BOARD_HEIGHT), pygame.RESIZABLE)
-        self.background = color.BLACK
+
+        self.background = pygame.image.load("./assets/frog.png", "frog")
 
         self.inputStack = InputStack()
 
-        self.state = GameState()
+        self.state = CharacterState()
         self.characterController = CharacterController()
         self.actions = list[Action]()
 
@@ -178,8 +188,12 @@ class Game:
         self.state.update(self.actions)
 
     def render(self):
+        # Background
+        self.image.fill(color.BLACK)
+
         # Base
-        self.image.fill(self.background)
+        self.image.blit(self.background, (0, 0),
+                        Rect(self.state.pos.x, self.state.pos.y, BOARD_WIDTH, BOARD_HEIGHT))
 
         # Character sprite
         self.image.fill(color.MAGENTA, self.state.characterRect)
