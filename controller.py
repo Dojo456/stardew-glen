@@ -33,10 +33,10 @@ class MoveCharacterAction(Action):
 
 
 class Direction(enum.Enum):
-    UP = 0
-    DOWN = 1
-    LEFT = 2
-    RIGHT = 3
+    DOWN = 0
+    RIGHT = 1
+    UP = 2
+    LEFT = 3
 
 
 class Character:
@@ -50,6 +50,7 @@ class Character:
 
     def __init__(self) -> None:
         self.pos = Vector2((WORLD_WIDTH / 2), (WORLD_HEIGHT / 2))
+        self.dir = Direction.DOWN
 
         self.epoch = time.time_ns()
 
@@ -85,15 +86,13 @@ class Character:
 
         self.pos = newPos
 
-        # using the int values of the direction enums to calculate character direction
-        vert = 1
+        newDir = self.dir
         if action.y != 0:
-            vert = int((action.y / 2) + 0.5)
+            newDir = Direction(1 - action.y)
 
-        horz = 0
         if action.x != 0:
-            horz = int((action.x / 2) + 1.5)
+            newDir = Direction(2 - action.x)
 
-        self.dir = Direction(vert + horz)
+        self.dir = newDir
         print(self.pos)
         print(self.dir)
