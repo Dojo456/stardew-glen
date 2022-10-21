@@ -1,52 +1,14 @@
-import enum
 import os
-import time
 from typing import Dict
 
 import pygame
-from pygame import Rect, Surface, Vector2
+from pygame import Rect, Surface
 
 import color
+from constants import *
+from controller import Action, Character, MoveCharacterAction
 
 os.environ['SDL_VIDEO_CENTERED'] = '1'
-
-FRAME_LIMIT = 60
-
-CELL_SIZE = 16
-
-DISPLAY_WIDTH = 32 * CELL_SIZE
-DISPLAY_HEIGHT = 20 * CELL_SIZE
-HALF_DISPLAY = Vector2((DISPLAY_WIDTH / 2) - (CELL_SIZE / 2),
-                       (DISPLAY_HEIGHT / 2) - (CELL_SIZE))
-
-WORLD_WIDTH = 40 * CELL_SIZE
-WORLD_HEIGHT = 30 * CELL_SIZE
-
-
-class ActionType(enum.Enum):
-    AddCoins = 1
-    SubtractCoins = 2
-    MoveCharacter = 2
-
-
-class Action:
-    def __init__(self, type: ActionType) -> None:
-        self.actionType = type
-
-
-class AddCoinsAction(Action):
-    def __init__(self, amount: int) -> None:
-        super().__init__(ActionType.AddCoins)
-
-        self.amount = amount
-
-
-class MoveCharacterAction(Action):
-    def __init__(self, x: int, y: int) -> None:
-        super().__init__(ActionType.MoveCharacter)
-
-        self.x = x
-        self.y = y
 
 
 class InputStack:
@@ -78,7 +40,7 @@ class InputStack:
         return 1 if val1 > val2 else -1
 
 
-class CharacterController():
+class InputProcessor():
     def process(self, inputs: InputStack) -> list[Action]:
         actions = list[Action]()
 
@@ -89,73 +51,6 @@ class CharacterController():
             actions.append(MoveCharacterAction(x, y))
 
         return actions
-
-
-class Direction(enum.Enum):
-    UP = 0
-    DOWN = 1
-    LEFT = 2
-    RIGHT = 3
-
-
-class CharacterState:
-    epoch: int
-
-    CHARACTER_SPEED = 150
-
-    coins: int
-    pos: pygame.math.Vector2
-    dir: Direction
-
-    def __init__(self) -> None:
-        self.pos = Vector2((WORLD_WIDTH / 2), (WORLD_HEIGHT / 2))
-
-        self.epoch = time.time_ns()
-
-    def update(self, actions: list[Action]):
-        now = time.time_ns()
-        elapsed = now - self.epoch
-        self.epoch = now
-
-        # 1e9 is the number of nanoseconds in a second
-        scale = elapsed / 1e9
-
-        for action in actions:
-            if isinstance(action, MoveCharacterAction):
-                self.handleMoveCharacter(scale, action)
-
-    xErr, yErr = 0, 0
-
-    def handleMoveCharacter(self, scale: float, action: MoveCharacterAction):
-        scaled = Vector2(action.x, action.y)
-        scaled.scale_to_length(self.CHARACTER_SPEED * scale)
-
-        newPos = self.pos + scaled
-
-        if newPos.x < 0:
-            newPos.x = 0
-        elif newPos.x > WORLD_WIDTH - CELL_SIZE:
-            newPos.x = WORLD_WIDTH - CELL_SIZE
-
-        if newPos.y < 0:
-            newPos.y = 0
-        elif newPos.y > WORLD_HEIGHT - (CELL_SIZE * 2):
-            newPos.y = WORLD_HEIGHT - (CELL_SIZE * 2)
-
-        self.pos = newPos
-
-        # using the int values of the direction enums to calculate character direction
-        vert = 1
-        if action.y != 0:
-            vert = int((action.y / 2) + 0.5)
-
-        horz = 0
-        if action.x != 0:
-            horz = int((action.x / 2) + 1.5)
-
-        self.dir = Direction(vert + horz)
-        print(self.pos)
-        print(self.dir)
 
 
 class Game:
@@ -170,8 +65,8 @@ class Game:
 
         self.inputStack = InputStack()
 
-        self.state = CharacterState()
-        self.characterController = CharacterController()
+        self.player = Character()
+        self.playerController = InputProcessor()
         self.actions = list[Action]()
 
         self.clock = pygame.time.Clock()
@@ -192,18 +87,18 @@ class Game:
                 case _:
                     pass
 
-        actions += self.characterController.process(self.inputStack)
+        actions += self.playerController.process(self.inputStack)
 
         self.actions = actions
 
     def update(self):
-        self.state.update(self.actions)
+        self.player.update(self.actions)
 
     def render(self):
         # Background
         self.image.fill(color.BLACK)
 
-        charPos = self.state.pos
+        charPos = self.player.pos
 
         # Character sprite location on screen
         spriteX = HALF_DISPLAY.x
