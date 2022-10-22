@@ -1,4 +1,5 @@
 import os
+import time
 from typing import Dict
 
 import pygame
@@ -6,7 +7,7 @@ from pygame import Rect, Surface
 
 import color
 from constants import *
-from controller import Action, Character, MoveCharacterAction
+from controller import Action, Character, CharacterState, MoveCharacterAction
 
 os.environ['SDL_VIDEO_CENTERED'] = '1'
 
@@ -53,6 +54,35 @@ class InputProcessor():
         return actions
 
 
+class DrawableCharacter(Character):
+    def __init__(self, identifier: str, tileSet: str) -> None:
+        super().__init__()
+
+        self.identifier = identifier
+        self.tileSet = pygame.image.load(tileSet)
+
+        self.epoch = time.time_ns()
+        self.tick = 0
+        self.accumulated = 0
+
+    def image(self) -> Surface:
+        row = 0
+        col = self.tick
+
+        if self.state == CharacterState.STANDING:
+            row = int(self.direction.value)
+            col = 0
+        elif self.state == CharacterState.WALKING:
+            row = int(self.direction.value)
+
+        image = Surface((16, 32))
+        image.blit(self.tileSet, (0, 0), Rect(
+            (col * 16) + 22, (row * 32) + 51, 16, 32))
+        image.set_colorkey(color.MAGENTA)
+
+        return image
+
+
 class Game:
     def __init__(self) -> None:
         pygame.init()
@@ -65,7 +95,7 @@ class Game:
 
         self.inputStack = InputStack()
 
-        self.player = Character()
+        self.player = DrawableCharacter("player", "./assets/penny.png")
         self.playerController = InputProcessor()
         self.actions = list[Action]()
 
@@ -116,8 +146,9 @@ class Game:
         # Base
         self.image.blit(self.background, (0, 0),
                         Rect(charPos.x - spriteX, charPos.y - spriteY, DISPLAY_WIDTH, DISPLAY_HEIGHT))
-        self.image.fill(color.MAGENTA, Rect(
-            spriteX, spriteY, CELL_SIZE, CELL_SIZE * 2))
+
+        # Character
+        self.image.blit(self.player.image(), (spriteX, spriteY))
 
         pygame.transform.scale(
             self.image, self.display.get_size(), self.display)
