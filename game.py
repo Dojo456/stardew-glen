@@ -7,8 +7,8 @@ from pygame import Rect, Surface
 
 import color
 from constants import *
-from controller import (Action, Character, CharacterState, Coord,
-                        MoveCharacterAction, PlantCropAction, TileType, World)
+from controller import (Action, Character, CharacterState, MoveCharacterAction,
+                        PlantCropAction, Tile, World)
 
 os.environ['SDL_VIDEO_CENTERED'] = '1'
 
@@ -27,8 +27,6 @@ class InputStack:
 
     def has(self, key: int):
         return self.dict.__contains__(key)
-
-
 
     def compare(self, key1: int, key2: int) -> int:
         """
@@ -68,12 +66,29 @@ class DrawableCharacter(Character):
         elif self.state == CharacterState.WALKING:
             row = int(self.direction.value)
 
-        image = Surface((16, 32))
+        image = Surface((CELL_SIZE, CELL_SIZE * 2))
         image.blit(self.tileSet, (0, 0), Rect(
-            (col * 16) + 22, (row * 32) + 51, 16, 32))
+            (col * CELL_SIZE) + 22, (row * CELL_SIZE * 2) + 51, CELL_SIZE, CELL_SIZE * 2))
         image.set_colorkey(color.MAGENTA)
 
         return image
+
+
+class DrawableWorld(World):
+    def __init__(self) -> None:
+        super().__init__()
+
+        self.dirtTileSet = pygame.image.load("./assets/hoed.png", "hoed dirt")
+        self.image = pygame.Surface((WORLD_WIDTH, WORLD_HEIGHT))
+        self.image.fill(color.MAGENTA)
+
+        self.image.set_colorkey(color.MAGENTA)
+
+    def addTile(self, tile: Tile):
+        self.image.blit(self.dirtTileSet, (tile.pos.x * CELL_SIZE,
+                        tile.pos.y * CELL_SIZE), Rect(0, 0, CELL_SIZE, CELL_SIZE))
+
+        return super().addTile(tile)
 
 
 class Game:
@@ -89,13 +104,14 @@ class Game:
         self.inputs = InputStack()
 
         self.player = DrawableCharacter("player", "./assets/penny.png")
-        self.world = World()
+        self.world = DrawableWorld()
         self.actions = list[Action]()
 
         self.clock = pygame.time.Clock()
         self.running = True
 
     mouseReleased = True
+
     def processInput(self):
         actions = list[Action]()
 
@@ -172,51 +188,24 @@ class Game:
 
         # Character sprite location on screen
         spriteX = HALF_DISPLAY.x
-        atLeftEdge, atRightEdge = False, False
         if playerPos.x < HALF_DISPLAY.x:
             spriteX = playerPos.x
-            atLeftEdge = True
         elif (WORLD_WIDTH - playerPos.x) < (HALF_DISPLAY.x + CELL_SIZE):
             spriteX = DISPLAY_WIDTH - (WORLD_WIDTH - playerPos.x)
-            atRightEdge = True
 
         spriteY = HALF_DISPLAY.y
-        atTopEdge, atBottomEdge = False, False
         if playerPos.y < HALF_DISPLAY.y:
             spriteY = playerPos.y
-            atTopEdge = True
         elif (WORLD_HEIGHT - playerPos.y) < (HALF_DISPLAY.y + CELL_SIZE + CELL_SIZE):
             spriteY = DISPLAY_HEIGHT - (WORLD_HEIGHT - playerPos.y)
-            atBottomEdge = True
 
         # Base
         self.image.blit(self.background, (0, 0),
                         Rect(playerPos.x - spriteX, playerPos.y - spriteY, DISPLAY_WIDTH, DISPLAY_HEIGHT))
 
         # World Elements
-        for tile in self.world.specialTiles:
-            tilePos = Coord(tile.pos.x * 16, tile.pos.y * 16)
-
-            if abs(tilePos.x - playerPos.x) < DISPLAY_WIDTH and abs(tilePos.y - playerPos.y) < DISPLAY_HEIGHT:
-                renderPos = Vector2()
-
-                if atLeftEdge:
-                    renderPos.x = tilePos.x
-                elif atRightEdge:
-                    renderPos.x = (tilePos.x - WORLD_WIDTH) + DISPLAY_WIDTH
-                else:
-                    renderPos.x = tilePos.x - (playerPos.x - HALF_DISPLAY.x)
-
-                if atTopEdge:
-                    renderPos.y = tilePos.y
-                elif atBottomEdge:
-                    renderPos.y = (tilePos.y - WORLD_HEIGHT) + DISPLAY_HEIGHT
-                else: 
-                    renderPos.y = tilePos.y - (playerPos.y - HALF_DISPLAY.y)
-
-                if tile.type == TileType.CROP:
-                    self.image.fill(color.MAGENTA, Rect(renderPos.x, renderPos.y, 16, 16))
-
+        self.image.blit(self.world.image, (0, 0),
+                        Rect(playerPos.x - spriteX, playerPos.y - spriteY, DISPLAY_WIDTH, DISPLAY_HEIGHT))
 
         # Character
         self.image.blit(self.player.image(), (spriteX, spriteY))

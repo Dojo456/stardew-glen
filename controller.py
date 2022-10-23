@@ -14,13 +14,16 @@ class Coord:
         self.x = x
         self.y = y
 
+
 class TileType(enum.Enum):
     CROP = 0
 
+
 class Tile:
-    def __init__(self, pos: Coord, type : TileType) -> None:
+    def __init__(self, pos: Coord, type: TileType) -> None:
         self.pos = pos
         self.type = type
+
 
 class Action:
     def __init__(self) -> None:
@@ -45,16 +48,19 @@ class MoveCharacterAction(Action):
         self.x = x
         self.y = y
 
+
 class PlantCropAction(Action):
     def __init__(self, at: Coord) -> None:
         super().__init__()
 
         self.at = at
 
+
 class World:
     def __init__(self) -> None:
         self.__specialTiles = list[Tile]()
-        self.__tiles: list[list[Tile | None]] = [[None]*WORLD_WIDTH] * WORLD_HEIGHT
+        self.__tiles: list[list[Tile | None]] = [
+            [None]*WORLD_WIDTH] * WORLD_HEIGHT
 
     @property
     def specialTiles(self):
@@ -63,13 +69,14 @@ class World:
     def update(self, actions: list[Action]):
         for action in actions:
             if isinstance(action, PlantCropAction):
-                self.__specialTiles.append(Tile(action.at, TileType.CROP))
+                self.addTile(Tile(action.at, TileType.CROP))
 
     def addTile(self, tile: Tile):
         pos = tile.pos
-            
+
         self.__specialTiles.append(tile)
         self.__tiles[pos.y][pos.x] = tile
+
 
 class Direction(enum.Enum):
     DOWN = 0
@@ -161,7 +168,7 @@ class Character(object):
         self.direction = newDir
         self.state = CharacterState.WALKING
         print(self.pos)
-        print(self.direction)        
+        print(self.direction)
 
     @property
     def closestTile(self) -> Coord:
