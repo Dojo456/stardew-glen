@@ -17,16 +17,30 @@ class InputStack:
     def __init__(self) -> None:
         self.count = 0
         self.dict: Dict[int, int] = {}
+        self._awaitingRelease = set[int]()
 
     def append(self, key: int):
-        self.count += 1
-        self.dict[key] = self.count
+        if key not in self._awaitingRelease:
+            self.count += 1
+            self.dict[key] = self.count
 
     def remove(self, key: int):
         self.dict.pop(key, -1)
+        try:
+            self._awaitingRelease.remove(key)
+        except KeyError:
+            pass
 
     def has(self, key: int):
-        return self.dict.__contains__(key)
+        return key in self.dict
+
+    def consume(self, key: int):
+        contains = key in self.dict
+        if contains:
+            self.dict.pop(key, -1)
+            self._awaitingRelease.add(key)
+
+        return contains
 
     def compare(self, key1: int, key2: int) -> int:
         """
@@ -91,6 +105,11 @@ class DrawableWorld(World):
         return super().addTile(tile)
 
 
+class GameState:
+    def __init__(self) -> None:
+        self.coins = 0
+
+
 class Game:
     def __init__(self) -> None:
         pygame.init()
@@ -102,6 +121,7 @@ class Game:
         self.background = pygame.image.load("./assets/frog.png", "frog")
         self.defaultFont = pygame.font.Font("./assets/font.ttf", 16)
 
+        self.state = GameState()
         self.inputs = InputStack()
 
         self.player = DrawableCharacter("player", "./assets/penny.png")
@@ -123,7 +143,6 @@ class Game:
                     break
                 case pygame.KEYDOWN:
                     self.inputs.append(event.key)
-                    print(event.key)
                 case pygame.KEYUP:
                     self.inputs.remove(event.key)
                 case pygame.MOUSEBUTTONDOWN:
@@ -148,7 +167,6 @@ class Game:
                     match(b):
                         case 1:
                             r = pygame.BUTTON_LEFT
-                            self.mouseReleased = True
                         case 2:
                             r = pygame.BUTTON_MIDDLE
                         case 3:
@@ -168,12 +186,10 @@ class Game:
         if not (x == y == 0):
             actions.append(MoveCharacterAction(x, y))
 
-        if self.inputs.has(pygame.BUTTON_LEFT):
-            if self.mouseReleased:
-                pos = self.player.closestTile
-                pos.y += 1
-                actions.append(PlantCropAction(pos))
-                self.mouseReleased = False
+        if self.inputs.consume(pygame.BUTTON_LEFT):
+            pos = self.player.closestTile
+            pos.y += 1
+            actions.append(PlantCropAction(pos))
 
         self.actions = actions
 
@@ -215,7 +231,15 @@ class Game:
         fpsSurface = self.defaultFont.render(
             str(round(self.clock.get_fps())), False, color.GREEN)
         fpsRect = fpsSurface.get_rect()
-        self.image.blit(fpsSurface, (DISPLAY_WIDTH-fpsRect.width, 0), fpsRect)
+        self.image.blit(
+            fpsSurface, (0, DISPLAY_HEIGHT-fpsRect.height), fpsRect)
+
+        coinsSurface = self.defaultFont.render(
+            str(self.state.coins), False, color.RED4
+        )
+        coinsRect = coinsSurface.get_rect()
+        self.image.blit(
+            coinsSurface, (DISPLAY_WIDTH-coinsRect.width-5, 5), coinsRect)
 
         pygame.transform.scale(
             self.image, self.display.get_size(), self.display)
