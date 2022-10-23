@@ -7,8 +7,8 @@ from pygame import Rect, Surface
 
 import color
 from constants import *
-from controller import (Action, Character, CharacterState, MoveCharacterAction,
-                        PlantCropAction, Tile, World)
+from controller import (Action, Character, CharacterState, Coord,
+                        MoveCharacterAction, PlantCropAction, Tile, World)
 
 os.environ['SDL_VIDEO_CENTERED'] = '1'
 
@@ -104,10 +104,11 @@ class DrawableWorld(World):
 
         return super().addTile(tile)
 
+    def removeTile(self, pos: Coord):
+        self.image.fill(color.MAGENTA, Rect(pos.x * CELL_SIZE,
+                        pos.y * CELL_SIZE, CELL_SIZE, CELL_SIZE))
 
-class GameState:
-    def __init__(self) -> None:
-        self.coins = 0
+        return super().removeTile(pos)
 
 
 class Game:
@@ -121,7 +122,6 @@ class Game:
         self.background = pygame.image.load("./assets/frog.png", "frog")
         self.defaultFont = pygame.font.Font("./assets/font.ttf", 16)
 
-        self.state = GameState()
         self.inputs = InputStack()
 
         self.player = DrawableCharacter("player", "./assets/penny.png")
@@ -143,6 +143,7 @@ class Game:
                     break
                 case pygame.KEYDOWN:
                     self.inputs.append(event.key)
+                    print(event.key)
                 case pygame.KEYUP:
                     self.inputs.remove(event.key)
                 case pygame.MOUSEBUTTONDOWN:
@@ -235,7 +236,7 @@ class Game:
             fpsSurface, (0, DISPLAY_HEIGHT-fpsRect.height), fpsRect)
 
         coinsSurface = self.defaultFont.render(
-            str(self.state.coins), False, color.RED4
+            str(self.world.coins), False, color.RED4
         )
         coinsRect = coinsSurface.get_rect()
         self.image.blit(

@@ -53,7 +53,7 @@ class PlantCropAction(Action):
     def __init__(self, at: Coord) -> None:
         super().__init__()
 
-        self.at = at
+        self.pos = at
 
 
 class World:
@@ -62,6 +62,9 @@ class World:
         self.__tiles: list[list[Tile | None]] = [
             [None]*WORLD_WIDTH] * WORLD_HEIGHT
 
+        # Global player states
+        self.coins = 0
+
     @property
     def specialTiles(self):
         return tuple(self.__specialTiles)
@@ -69,13 +72,34 @@ class World:
     def update(self, actions: list[Action]):
         for action in actions:
             if isinstance(action, PlantCropAction):
-                self.addTile(Tile(action.at, TileType.CROP))
+                self.__handlePlantCropAction(action)
+
+    def tileAt(self, pos: Coord):
+        return self.__tiles[pos.y][pos.x]
 
     def addTile(self, tile: Tile):
         pos = tile.pos
 
         self.__specialTiles.append(tile)
         self.__tiles[pos.y][pos.x] = tile
+
+    def removeTile(self, pos: Coord):
+        self.__tiles[pos.y][pos.x] = None
+
+        for tile in self.__specialTiles:
+            if tile.pos == pos:
+                self.__specialTiles.remove(tile)
+                break
+
+    def __handlePlantCropAction(self, action: PlantCropAction):
+        existing = self.tileAt(action.pos)
+
+        # if harvesting
+        if existing != None and existing.type == TileType.CROP:
+            self.removeTile(action.pos)
+            self.coins += 5
+        else:
+            self.addTile(Tile(action.pos, TileType.CROP))
 
 
 class Direction(enum.Enum):
