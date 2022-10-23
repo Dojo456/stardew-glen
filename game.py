@@ -100,6 +100,7 @@ class Game:
             (DISPLAY_WIDTH, DISPLAY_HEIGHT), pygame.RESIZABLE)
 
         self.background = pygame.image.load("./assets/frog.png", "frog")
+        self.defaultFont = pygame.font.Font("./assets/font.ttf", 16)
 
         self.inputs = InputStack()
 
@@ -209,6 +210,12 @@ class Game:
 
         # Character
         self.image.blit(self.player.image(), (spriteX, spriteY))
+
+        # HUD Elements
+        fpsSurface = self.defaultFont.render(
+            str(round(self.clock.get_fps())), False, color.GREEN)
+        fpsRect = fpsSurface.get_rect()
+        self.image.blit(fpsSurface, (DISPLAY_WIDTH-fpsRect.width, 0), fpsRect)
 
         pygame.transform.scale(
             self.image, self.display.get_size(), self.display)

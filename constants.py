@@ -1,6 +1,6 @@
 from pygame import Vector2
 
-FRAME_LIMIT = 60
+FRAME_LIMIT = 120
 
 CELL_SIZE = 16
 
