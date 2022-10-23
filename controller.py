@@ -6,35 +6,70 @@ import pygame
 from constants import *
 
 
-class ActionType(enum.Enum):
-    AddCoins = 1
-    SubtractCoins = 2
-    MoveCharacter = 2
+class Coord:
+    x: int
+    y: int
 
+    def __init__(self, x: int, y: int) -> None:
+        self.x = x
+        self.y = y
+
+class TileType(enum.Enum):
+    CROP = 0
+
+class Tile:
+    def __init__(self, pos: Coord, type : TileType) -> None:
+        self.pos = pos
+        self.type = type
 
 class Action:
-    def __init__(self, type: ActionType) -> None:
-        self.actionType = type
+    def __init__(self) -> None:
+        pass
 
 
 class AddCoinsAction(Action):
     def __init__(self, amount: int) -> None:
-        super().__init__(ActionType.AddCoins)
+        super().__init__()
 
         self.amount = amount
 
 
 class MoveCharacterAction(Action):
     def __init__(self, x: int, y: int) -> None:
+        super().__init__()
+
         allowed = [-1, 0, 1]
         if x not in allowed or y not in allowed:
             raise ValueError("allowed values are -1, 0, or 1")
 
-        super().__init__(ActionType.MoveCharacter)
-
         self.x = x
         self.y = y
 
+class PlantCropAction(Action):
+    def __init__(self, at: Coord) -> None:
+        super().__init__()
+
+        self.at = at
+
+class World:
+    def __init__(self) -> None:
+        self.__specialTiles = list[Tile]()
+        self.__tiles: list[list[Tile | None]] = [[None]*WORLD_WIDTH] * WORLD_HEIGHT
+
+    @property
+    def specialTiles(self):
+        return tuple(self.__specialTiles)
+
+    def update(self, actions: list[Action]):
+        for action in actions:
+            if isinstance(action, PlantCropAction):
+                self.__specialTiles.append(Tile(action.at, TileType.CROP))
+
+    def addTile(self, tile: Tile):
+        pos = tile.pos
+            
+        self.__specialTiles.append(tile)
+        self.__tiles[pos.y][pos.x] = tile
 
 class Direction(enum.Enum):
     DOWN = 0
@@ -53,7 +88,7 @@ CHARACTER_SPEED = 150
 ANIMATION_SPEED = 2
 
 
-class Character:
+class Character(object):
     epoch: int
 
     coins: int
@@ -126,4 +161,10 @@ class Character:
         self.direction = newDir
         self.state = CharacterState.WALKING
         print(self.pos)
-        print(self.direction)
+        print(self.direction)        
+
+    @property
+    def closestTile(self) -> Coord:
+        pos = self.pos
+
+        return Coord(round(pos.x / CELL_SIZE), round(pos.y / CELL_SIZE))
