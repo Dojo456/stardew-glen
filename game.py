@@ -92,16 +92,20 @@ class DrawableWorld(World):
     def __init__(self) -> None:
         super().__init__()
 
+        self.overlayImage = pygame.Surface((WORLD_WIDTH, WORLD_HEIGHT))
+        self.overlayImage.fill(color.MAGENTA)
+        self.overlayImage.set_colorkey(color.MAGENTA)
+
         self.dirtTileSet = pygame.image.load("./assets/hoed.png", "hoed dirt")
 
     def addTile(self, tile: Tile):
-        self.image.blit(self.dirtTileSet, (tile.pos.x * CELL_SIZE,
+        self.overlayImage.blit(self.dirtTileSet, (tile.pos.x * CELL_SIZE,
                         tile.pos.y * CELL_SIZE), Rect(0, 0, CELL_SIZE, CELL_SIZE))
 
         return super().addTile(tile)
 
     def removeTile(self, pos: Coord):
-        self.image.fill(color.MAGENTA, Rect(pos.x * CELL_SIZE,
+        self.overlayImage.fill(color.MAGENTA, Rect(pos.x * CELL_SIZE,
                         pos.y * CELL_SIZE, CELL_SIZE, CELL_SIZE))
 
         return super().removeTile(pos)
@@ -220,6 +224,8 @@ class Game:
 
         # World Elements
         self.image.blit(self.world.image, (0, 0),
+                        Rect(playerPos.x - spriteX, playerPos.y - spriteY, DISPLAY_WIDTH, DISPLAY_HEIGHT))
+        self.image.blit(self.world.overlayImage, (0, 0),
                         Rect(playerPos.x - spriteX, playerPos.y - spriteY, DISPLAY_WIDTH, DISPLAY_HEIGHT))
 
         # Character
