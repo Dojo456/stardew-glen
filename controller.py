@@ -1,10 +1,9 @@
 import enum
 import time
-from types import CellType
 
 import pygame
-from pytmx import TiledTileLayer, load_pygame
-from shapely import geometry
+from pytmx import TiledTileLayer, load_pygame  # type: ignore
+from shapely import geometry  # type: ignore
 
 import color
 from constants import *
@@ -69,11 +68,11 @@ class World:
         self.mapData = load_pygame("./assets/tiled/minimap.tmx")
         self.image = pygame.Surface((WORLD_WIDTH, WORLD_HEIGHT))
 
-        layerCount = len(self.mapData.layers)
+        layerCount = len(self.mapData.layers) # type: ignore
 
-        for layer in self.mapData.layers:
+        for layer in self.mapData.layers: # type: ignore 
             if isinstance(layer, TiledTileLayer):
-                for x, y, image in layer.tiles():
+                for x, y, image in layer.tiles(): # type: ignore
                     if isinstance(image, pygame.Surface):
                         self.image.blit(image, (x * CELL_SIZE, y * CELL_SIZE))
 
@@ -212,9 +211,9 @@ class Character(object):
         colVert = _centeredRect(vert + hitBoxVec, CELL_SIZE - 2)
 
         for object in self.world.collisionObjects:
-            if object.intersects(colHorz) and not object.intersects(org):
+            if object.intersects(colHorz) and not object.intersects(org): # type: ignore
                 scaled.x = 0
-            if object.intersects(colVert) and not object.intersects(org):
+            if object.intersects(colVert) and not object.intersects(org): # type: ignore
                 scaled.y = 0
 
         self.pos += scaled
