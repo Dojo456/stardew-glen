@@ -2,10 +2,9 @@ import enum
 import time
 
 import pygame
-from pytmx import TiledTileLayer, load_pygame  # type: ignore
+from pytmx import load_pygame  # type: ignore
 from shapely import geometry  # type: ignore
 
-import color
 from constants import *
 
 
@@ -66,21 +65,11 @@ class World:
             [None]*WORLD_WIDTH] * WORLD_HEIGHT
 
         self.mapData = load_pygame("./assets/tiled/minimap.tmx")
-        self.image = pygame.Surface((WORLD_WIDTH, WORLD_HEIGHT))
-
-        layerCount = len(self.mapData.layers) # type: ignore
-
-        for layer in self.mapData.layers: # type: ignore 
-            if isinstance(layer, TiledTileLayer):
-                for x, y, image in layer.tiles(): # type: ignore
-                    if isinstance(image, pygame.Surface):
-                        self.image.blit(image, (x * CELL_SIZE, y * CELL_SIZE))
 
         self.collisionObjects = list[geometry.Polygon]()
         for object in self.mapData.objects:
             self.collisionObjects.append(geometry.Polygon(object.points))
 
-        self.image.set_colorkey(color.MAGENTA)
 
         # Global player states
         self.coins = 0

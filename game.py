@@ -4,6 +4,7 @@ from typing import Dict
 
 import pygame
 from pygame import Rect, Surface
+from pytmx import TiledTileLayer  # type: ignore
 
 import color
 from constants import *
@@ -92,11 +93,21 @@ class DrawableWorld(World):
     def __init__(self) -> None:
         super().__init__()
 
+        self.image = pygame.Surface((WORLD_WIDTH, WORLD_HEIGHT))
+
+        layerCount = len(self.mapData.layers) # type: ignore
+
+        for layer in self.mapData.layers: # type: ignore 
+            if isinstance(layer, TiledTileLayer):
+                for x, y, image in layer.tiles(): # type: ignore
+                    if isinstance(image, pygame.Surface):
+                        self.image.blit(image, (x * CELL_SIZE, y * CELL_SIZE))
+
+        self.dirtTileSet = pygame.image.load("./assets/hoed.png", "hoed dirt")
+        
         self.overlayImage = pygame.Surface((WORLD_WIDTH, WORLD_HEIGHT))
         self.overlayImage.fill(color.MAGENTA)
         self.overlayImage.set_colorkey(color.MAGENTA)
-
-        self.dirtTileSet = pygame.image.load("./assets/hoed.png", "hoed dirt")
 
     def addTile(self, tile: Tile):
         self.overlayImage.blit(self.dirtTileSet, (tile.pos.x * CELL_SIZE,
