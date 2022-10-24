@@ -3,10 +3,23 @@
         "height": 4300,
         "width": 2
     },
-    "activeFile": "",
+    "activeFile": "minimap.tmx",
     "expandedProjectPaths": [
+        "."
     ],
     "fileStates": {
+        "minidew-spring.tsx": {
+            "scaleInDock": 3,
+            "scaleInEditor": 1
+        },
+        "minimap.tmx": {
+            "scale": 1.9122,
+            "selectedLayer": 2,
+            "viewCenter": {
+                "x": 346.98253320782345,
+                "y": 243.17540006275496
+            }
+        }
     },
     "last.imagePath": "C:/Users/yliao1/Documents/GitHub/minidew-valley/assets",
     "map.height": 30,
@@ -15,9 +28,13 @@
     "map.tileWidth": 16,
     "map.width": 40,
     "openFiles": [
+        "minidew-spring.tsx",
+        "minimap.tmx"
     ],
     "project": "map.tiled-project",
     "recentFiles": [
+        "minidew-spring.tsx",
+        "minimap.tmx"
     ],
     "tileset.lastUsedFormat": "tsx",
     "tileset.tileSize": {

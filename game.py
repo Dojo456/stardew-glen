@@ -1,11 +1,9 @@
 import os
 import time
-from ctypes.wintypes import tagMSG
 from typing import Dict
 
 import pygame
 from pygame import Rect, Surface
-from pytmx import load_pygame
 
 import color
 from constants import *
@@ -62,8 +60,8 @@ class InputStack:
 
 
 class DrawableCharacter(Character):
-    def __init__(self, identifier: str, tileSet: str) -> None:
-        super().__init__()
+    def __init__(self, identifier: str, tileSet: str, world: World) -> None:
+        super().__init__(world)
 
         self.identifier = identifier
         self.tileSet = pygame.image.load(tileSet)
@@ -95,21 +93,6 @@ class DrawableWorld(World):
         super().__init__()
 
         self.dirtTileSet = pygame.image.load("./assets/hoed.png", "hoed dirt")
-        self.mapData = load_pygame("./assets/tiled/minimap.tmx")
-
-        self.image = pygame.Surface((WORLD_WIDTH, WORLD_HEIGHT))
-
-        layerCount = len(self.mapData.layers)
-
-        for i in range(int(WORLD_WIDTH / CELL_SIZE)):
-            for j in range(int(WORLD_HEIGHT / CELL_SIZE)):
-                for l in range(layerCount):
-                    tile: Surface | None = self.mapData.get_tile_image(i, j, l)
-
-                    if tile != None:
-                        self.image.blit(tile, (i * CELL_SIZE, j*CELL_SIZE))
-
-        self.image.set_colorkey(color.MAGENTA)
 
     def addTile(self, tile: Tile):
         self.image.blit(self.dirtTileSet, (tile.pos.x * CELL_SIZE,
@@ -137,8 +120,9 @@ class Game:
 
         self.inputs = InputStack()
 
-        self.player = DrawableCharacter("player", "./assets/penny.png")
         self.world = DrawableWorld()
+        self.player = DrawableCharacter(
+            "player", "./assets/penny.png", self.world)
         self.actions = list[Action]()
 
         self.clock = pygame.time.Clock()

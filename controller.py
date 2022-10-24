@@ -1,8 +1,12 @@
 import enum
 import time
+from types import CellType
 
 import pygame
+from pytmx import TiledTileLayer, load_pygame
+from shapely import geometry
 
+import color
 from constants import *
 
 
@@ -61,6 +65,23 @@ class World:
         self.__specialTiles = list[Tile]()
         self.__tiles: list[list[Tile | None]] = [
             [None]*WORLD_WIDTH] * WORLD_HEIGHT
+
+        self.mapData = load_pygame("./assets/tiled/minimap.tmx")
+        self.image = pygame.Surface((WORLD_WIDTH, WORLD_HEIGHT))
+
+        layerCount = len(self.mapData.layers)
+
+        for layer in self.mapData.layers:
+            if isinstance(layer, TiledTileLayer):
+                for x, y, image in layer.tiles():
+                    if isinstance(image, pygame.Surface):
+                        self.image.blit(image, (x * CELL_SIZE, y * CELL_SIZE))
+
+        self.collisionObjects = list[geometry.Polygon]()
+        for object in self.mapData.objects:
+            self.collisionObjects.append(geometry.Polygon(object.points))
+
+        self.image.set_colorkey(color.MAGENTA)
 
         # Global player states
         self.coins = 0
@@ -128,7 +149,7 @@ class Character(object):
 
     state: CharacterState
 
-    def __init__(self) -> None:
+    def __init__(self, world: World) -> None:
         self.pos = Vector2((WORLD_WIDTH / 2), (WORLD_HEIGHT / 2))
         self.direction = Direction.DOWN
         self.state = CharacterState.STANDING
@@ -136,6 +157,8 @@ class Character(object):
         self.epoch = time.time_ns()
         self.accumulated = 0
         self.tick = 0
+
+        self.world = world
 
     def update(self, actions: list[Action]):
         now = time.time_ns()
@@ -168,19 +191,33 @@ class Character(object):
         scaled = Vector2(action.x, action.y)
         scaled.scale_to_length(CHARACTER_SPEED * scale)
 
-        newPos = self.pos + scaled
+        horz = self.pos + Vector2(scaled.x, 0)
+        vert = self.pos + Vector2(0, scaled.y)
 
-        if newPos.x < 0:
-            newPos.x = 0
-        elif newPos.x > WORLD_WIDTH - CELL_SIZE:
-            newPos.x = WORLD_WIDTH - CELL_SIZE
+        if horz.x < 0:
+            scaled.x = -self.pos.x
+        elif horz.x > WORLD_WIDTH - CELL_SIZE:
+            scaled.x = WORLD_WIDTH - CELL_SIZE - self.pos.x
 
-        if newPos.y < 0:
-            newPos.y = 0
-        elif newPos.y > WORLD_HEIGHT - (CELL_SIZE * 2):
-            newPos.y = WORLD_HEIGHT - (CELL_SIZE * 2)
+        if vert.y < 0:
+            scaled.y = -self.pos.y
+        elif vert.y > WORLD_HEIGHT - (CELL_SIZE * 2):
+            scaled.y = WORLD_HEIGHT - (CELL_SIZE * 2) - self.pos.y
 
-        self.pos = newPos
+        hitBoxVec = Vector2(CELL_SIZE /
+                            2, CELL_SIZE * 1.5)
+
+        org = _centeredRect(self.pos + hitBoxVec, CELL_SIZE - 2)
+        colHorz = _centeredRect(horz + hitBoxVec, CELL_SIZE - 2)
+        colVert = _centeredRect(vert + hitBoxVec, CELL_SIZE - 2)
+
+        for object in self.world.collisionObjects:
+            if object.intersects(colHorz) and not object.intersects(org):
+                scaled.x = 0
+            if object.intersects(colVert) and not object.intersects(org):
+                scaled.y = 0
+
+        self.pos += scaled
 
         newDir = self.direction
         if action.y != 0:
@@ -191,11 +228,24 @@ class Character(object):
 
         self.direction = newDir
         self.state = CharacterState.WALKING
-        print(self.pos)
-        print(self.direction)
+        # print(self.pos)
 
     @property
     def closestTile(self) -> Coord:
         pos = self.pos
 
         return Coord(round(pos.x / CELL_SIZE), round(pos.y / CELL_SIZE))
+
+
+def _centeredRect(point: pygame.math.Vector2, size: float) -> geometry.Polygon:
+    diag = Vector2(size / 2, size / 2)
+
+    topLeft = point - diag
+    bottomRight = point + diag
+
+    diag.y = -(size / 2)
+
+    bottomLeft = point - diag
+    topRight = point + diag
+
+    return geometry.Polygon([topLeft, bottomLeft, bottomRight, topRight])
