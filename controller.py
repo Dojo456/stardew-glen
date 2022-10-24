@@ -4,6 +4,7 @@ import time
 import pygame
 from pytmx import load_pygame  # type: ignore
 from shapely import geometry  # type: ignore
+from shapely.ops import nearest_points  # type: ignore
 
 from constants import *
 
@@ -68,8 +69,11 @@ class World:
 
         self.collisionObjects = list[geometry.Polygon]()
         for object in self.mapData.objects:
-            self.collisionObjects.append(geometry.Polygon(object.points))
+            self.collisionObjects.append(geometry.Polygon(object.as_points))
 
+        spawnPoint = self.mapData.get_object_by_name(  # type: ignore
+            "spawnPoint")
+        self.spawnPoint = Vector2(spawnPoint.x, spawnPoint.y)
 
         # Global player states
         self.coins = 0
@@ -138,15 +142,15 @@ class Character(object):
     state: CharacterState
 
     def __init__(self, world: World) -> None:
-        self.pos = Vector2((WORLD_WIDTH / 2), (WORLD_HEIGHT / 2))
+        self.world = world
+
+        self.pos = world.spawnPoint
         self.direction = Direction.DOWN
         self.state = CharacterState.STANDING
 
         self.epoch = time.time_ns()
         self.accumulated = 0
         self.tick = 0
-
-        self.world = world
 
     def update(self, actions: list[Action]):
         now = time.time_ns()
@@ -195,17 +199,21 @@ class Character(object):
         hitBoxVec = Vector2(CELL_SIZE /
                             2, CELL_SIZE * 1.5)
 
-        org = _centeredRect(self.pos + hitBoxVec, CELL_SIZE - 2)
-        colHorz = _centeredRect(horz + hitBoxVec, CELL_SIZE - 2)
-        colVert = _centeredRect(vert + hitBoxVec, CELL_SIZE - 2)
+        org = _centeredRect(self.pos + hitBoxVec, CELL_SIZE - 3)
+        colHorz = _centeredRect(horz + hitBoxVec, CELL_SIZE - 3)
+        colVert = _centeredRect(vert + hitBoxVec, CELL_SIZE - 3)
 
         for object in self.world.collisionObjects:
-            if object.intersects(colHorz) and not object.intersects(org): # type: ignore
+            if object.intersects(colHorz) and not object.intersects(org):  # type: ignore
                 scaled.x = 0
-            if object.intersects(colVert) and not object.intersects(org): # type: ignore
+            if object.intersects(colVert) and not object.intersects(org):  # type: ignore
                 scaled.y = 0
 
         self.pos += scaled
+
+        for object in self.world.collisionObjects:
+            if object.contains(_centeredRect(self.pos + hitBoxVec, CELL_SIZE)):  # type: ignore
+                print("clipping")
 
         newDir = self.direction
         if action.y != 0:

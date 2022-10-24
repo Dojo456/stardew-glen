@@ -83,7 +83,7 @@ class DrawableCharacter(Character):
 
         image = Surface((CELL_SIZE, CELL_SIZE * 2))
         image.blit(self.tileSet, (0, 0), Rect(
-            (col * CELL_SIZE) + 22, (row * CELL_SIZE * 2) + 51, CELL_SIZE, CELL_SIZE * 2))
+            (col * CELL_SIZE) + 21, (row * CELL_SIZE * 2) + 46, CELL_SIZE, CELL_SIZE * 2))
         image.set_colorkey(color.MAGENTA)
 
         return image
@@ -95,29 +95,29 @@ class DrawableWorld(World):
 
         self.image = pygame.Surface((WORLD_WIDTH, WORLD_HEIGHT))
 
-        layerCount = len(self.mapData.layers) # type: ignore
+        layerCount = len(self.mapData.layers)  # type: ignore
 
-        for layer in self.mapData.layers: # type: ignore 
+        for layer in self.mapData.layers:  # type: ignore
             if isinstance(layer, TiledTileLayer):
-                for x, y, image in layer.tiles(): # type: ignore
+                for x, y, image in layer.tiles():  # type: ignore
                     if isinstance(image, pygame.Surface):
                         self.image.blit(image, (x * CELL_SIZE, y * CELL_SIZE))
 
         self.dirtTileSet = pygame.image.load("./assets/hoed.png", "hoed dirt")
-        
+
         self.overlayImage = pygame.Surface((WORLD_WIDTH, WORLD_HEIGHT))
         self.overlayImage.fill(color.MAGENTA)
         self.overlayImage.set_colorkey(color.MAGENTA)
 
     def addTile(self, tile: Tile):
         self.overlayImage.blit(self.dirtTileSet, (tile.pos.x * CELL_SIZE,
-                        tile.pos.y * CELL_SIZE), Rect(0, 0, CELL_SIZE, CELL_SIZE))
+                                                  tile.pos.y * CELL_SIZE), Rect(0, 0, CELL_SIZE, CELL_SIZE))
 
         return super().addTile(tile)
 
     def removeTile(self, pos: Coord):
         self.overlayImage.fill(color.MAGENTA, Rect(pos.x * CELL_SIZE,
-                        pos.y * CELL_SIZE, CELL_SIZE, CELL_SIZE))
+                                                   pos.y * CELL_SIZE, CELL_SIZE, CELL_SIZE))
 
         return super().removeTile(pos)
 
