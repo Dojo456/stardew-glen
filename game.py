@@ -26,7 +26,8 @@ class InputStack:
             self.dict[key] = self.count
 
     def remove(self, key: int):
-        self.dict.pop(key, -1)
+        if self.dict.pop(key, -1) != -1:
+            self.count -= 1
         try:
             self._awaitingRelease.remove(key)
         except KeyError:
@@ -36,10 +37,13 @@ class InputStack:
         return key in self.dict
 
     def consume(self, key: int):
-        contains = key in self.dict
-        if contains:
-            self.dict.pop(key, -1)
+        contains = False
+
+        if self.dict.pop(key, -1) != -1:
             self._awaitingRelease.add(key)
+            self.count -= 1
+
+            contains = True
 
         return contains
 
@@ -95,8 +99,6 @@ class DrawableWorld(World):
 
         self.image = pygame.Surface((WORLD_WIDTH, WORLD_HEIGHT))
 
-        layerCount = len(self.mapData.layers)  # type: ignore
-
         for layer in self.mapData.layers:  # type: ignore
             if isinstance(layer, TiledTileLayer):
                 for x, y, image in layer.tiles():  # type: ignore
@@ -146,8 +148,6 @@ class Game:
     mouseReleased = True
 
     def processInput(self):
-        actions = list[Action]()
-
         for event in pygame.event.get():
             match event.type:
                 case pygame.QUIT:

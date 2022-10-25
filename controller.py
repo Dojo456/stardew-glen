@@ -2,7 +2,7 @@ import enum
 import time
 
 import pygame
-from pytmx import load_pygame  # type: ignore
+from pytmx import TiledObject, TiledObjectGroup, load_pygame  # type: ignore
 from shapely import geometry  # type: ignore
 from shapely.ops import nearest_points  # type: ignore
 
@@ -16,6 +16,9 @@ class Coord:
     def __init__(self, x: int, y: int) -> None:
         self.x = x
         self.y = y
+
+    def __eq__(self, __o: object) -> bool:
+        return self.x == __o.x and self.y == __o.y  # type: ignore
 
 
 class TileType(enum.Enum):
@@ -61,15 +64,18 @@ class PlantCropAction(Action):
 
 class World:
     def __init__(self) -> None:
-        self.__specialTiles = list[Tile]()
         self.__tiles: list[list[Tile | None]] = [
             [None]*WORLD_WIDTH] * WORLD_HEIGHT
 
         self.mapData = load_pygame("./assets/tiled/minimap.tmx")
 
         self.collisionObjects = list[geometry.Polygon]()
-        for object in self.mapData.objects:
-            self.collisionObjects.append(geometry.Polygon(object.as_points))
+        collisionLayer: TiledObjectGroup = self.mapData.get_layer_by_name(
+            "Collision Objects")
+        for object in collisionLayer:  # type: ignore
+            assert (type(object) == TiledObject)  # type: ignore
+            self.collisionObjects.append(
+                geometry.Polygon(object.as_points))  # type: ignore
 
         spawnPoint = self.mapData.get_object_by_name(  # type: ignore
             "spawnPoint")
@@ -77,10 +83,6 @@ class World:
 
         # Global player states
         self.coins = 0
-
-    @property
-    def specialTiles(self):
-        return tuple(self.__specialTiles)
 
     def update(self, actions: list[Action]):
         for action in actions:
@@ -93,16 +95,10 @@ class World:
     def addTile(self, tile: Tile):
         pos = tile.pos
 
-        self.__specialTiles.append(tile)
         self.__tiles[pos.y][pos.x] = tile
 
     def removeTile(self, pos: Coord):
         self.__tiles[pos.y][pos.x] = None
-
-        for tile in self.__specialTiles:
-            if tile.pos == pos:
-                self.__specialTiles.remove(tile)
-                break
 
     def __handlePlantCropAction(self, action: PlantCropAction):
         existing = self.tileAt(action.pos)
