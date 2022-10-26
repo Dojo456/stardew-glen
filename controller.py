@@ -8,6 +8,9 @@ from shapely.ops import nearest_points  # type: ignore
 
 from constants import *
 
+HITBOX_VEC = Vector2(CELL_SIZE /
+                     2, CELL_SIZE * 1.5)
+
 
 class Coord:
     x: int
@@ -19,6 +22,12 @@ class Coord:
 
     def __eq__(self, __o: object) -> bool:
         return self.x == __o.x and self.y == __o.y  # type: ignore
+
+    def __str__(self) -> str:
+        return f"x: {self.x}, y: {self.y}"
+
+    def __repr__(self) -> str:
+        return self.__str__()
 
 
 class TileType(enum.Enum):
@@ -65,7 +74,7 @@ class PlantCropAction(Action):
 class World:
     def __init__(self) -> None:
         self.__tiles: list[list[Tile | None]] = [
-            [None]*WORLD_WIDTH] * WORLD_HEIGHT
+            [None]*int(WORLD_WIDTH / CELL_SIZE)] * int((WORLD_HEIGHT / CELL_SIZE))
 
         self.mapData = load_pygame("./assets/tiled/minimap.tmx")
 
@@ -192,12 +201,9 @@ class Character(object):
         elif vert.y > WORLD_HEIGHT - (CELL_SIZE * 2):
             scaled.y = WORLD_HEIGHT - (CELL_SIZE * 2) - self.pos.y
 
-        hitBoxVec = Vector2(CELL_SIZE /
-                            2, CELL_SIZE * 1.5)
-
-        org = _centeredRect(self.pos + hitBoxVec, CELL_SIZE - 3)
-        colHorz = _centeredRect(horz + hitBoxVec, CELL_SIZE - 3)
-        colVert = _centeredRect(vert + hitBoxVec, CELL_SIZE - 3)
+        org = _centeredRect(self.pos + HITBOX_VEC, CELL_SIZE - 3)
+        colHorz = _centeredRect(horz + HITBOX_VEC, CELL_SIZE - 3)
+        colVert = _centeredRect(vert + HITBOX_VEC, CELL_SIZE - 3)
 
         for object in self.world.collisionObjects:
             if object.intersects(colHorz) and not object.intersects(org):  # type: ignore
@@ -208,7 +214,7 @@ class Character(object):
         self.pos += scaled
 
         for object in self.world.collisionObjects:
-            if object.contains(_centeredRect(self.pos + hitBoxVec, CELL_SIZE)):  # type: ignore
+            if object.contains(_centeredRect(self.pos + HITBOX_VEC, CELL_SIZE)):  # type: ignore
                 print("clipping")
 
         newDir = self.direction
@@ -224,9 +230,9 @@ class Character(object):
 
     @property
     def closestTile(self) -> Coord:
-        pos = self.pos
+        pos = self.pos + HITBOX_VEC
 
-        return Coord(round(pos.x / CELL_SIZE), round(pos.y / CELL_SIZE))
+        return Coord(int(pos.x / CELL_SIZE), int(pos.y / CELL_SIZE))
 
 
 def _centeredRect(point: pygame.math.Vector2, size: float) -> geometry.Polygon:

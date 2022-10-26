@@ -13,11 +13,11 @@
             "scaleInEditor": 1
         },
         "minimap.tmx": {
-            "scale": 1.86,
-            "selectedLayer": 2,
+            "scale": 1.944,
+            "selectedLayer": 5,
             "viewCenter": {
-                "x": 292.2043010752688,
-                "y": 253.76344086021504
+                "x": 317.6440329218107,
+                "y": 224.7942386831276
             }
         }
     },

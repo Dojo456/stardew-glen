@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.9" tiledversion="1.9.2" orientation="orthogonal" renderorder="right-down" width="40" height="30" tilewidth="16" tileheight="16" infinite="0" nextlayerid="7" nextobjectid="24">
+<map version="1.9" tiledversion="1.9.2" orientation="orthogonal" renderorder="right-down" width="40" height="30" tilewidth="16" tileheight="16" infinite="0" nextlayerid="7" nextobjectid="26">
  <tileset firstgid="1" source="minidew-spring.tsx"/>
  <layer id="1" name="Tile Layer 1" width="40" height="30">
   <data encoding="csv">
@@ -104,10 +104,18 @@
 </data>
  </layer>
  <objectgroup id="5" name="Collision Objects">
-  <object id="15" x="224" y="160" width="16" height="48"/>
-  <object id="17" x="240" y="176" width="128" height="112"/>
-  <object id="19" x="240" y="160" width="112" height="16"/>
-  <object id="20" x="272" y="288" width="64" height="16"/>
+  <object id="15" x="224" y="160" width="16" height="48">
+   <polygon points="0,0 16,0 16,48 0,48"/>
+  </object>
+  <object id="17" x="240" y="176" width="128" height="112">
+   <polygon points="0,0 128,0 128,112 0,112"/>
+  </object>
+  <object id="19" x="240" y="160" width="112" height="16">
+   <polygon points="0,0 112,0 112,16 0,16"/>
+  </object>
+  <object id="20" x="272" y="288" width="64" height="16">
+   <polygon points="0,0 64,0 64,16 0,16"/>
+  </object>
  </objectgroup>
  <layer id="4" name="Decorators" width="40" height="30">
   <data encoding="csv">
@@ -144,6 +152,6 @@
 </data>
  </layer>
  <objectgroup id="6" name="Special Objects">
-  <object id="23" name="spawnPoint" x="464" y="64" width="16" height="16"/>
+  <object id="25" name="spawnPoint" x="464" y="64" width="16" height="32"/>
  </objectgroup>
 </map>

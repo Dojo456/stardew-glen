@@ -148,14 +148,15 @@ class Game:
     mouseReleased = True
 
     def processInput(self):
-        for event in pygame.event.get():
+        events = pygame.event.get()
+
+        for event in events:
             match event.type:
                 case pygame.QUIT:
                     self.running = False
                     break
                 case pygame.KEYDOWN:
                     self.inputs.append(event.key)
-                    print(event.key)
                 case pygame.KEYUP:
                     self.inputs.remove(event.key)
                 case pygame.MOUSEBUTTONDOWN:
@@ -201,7 +202,6 @@ class Game:
 
         if self.inputs.consume(pygame.BUTTON_LEFT):
             pos = self.player.closestTile
-            pos.y += 1
             actions.append(PlantCropAction(pos))
 
         self.actions = actions
