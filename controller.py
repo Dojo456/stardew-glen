@@ -71,6 +71,16 @@ class PlantCropAction(Action):
         self.pos = at
 
 
+class ChangeInventorySelectionAction(Action):
+    def __init__(self, selection: int) -> None:
+        super().__init__()
+
+        if selection < 0 or selection > 11:
+            raise ValueError("must be between 0 and 11")
+
+        self.selection = selection
+
+
 class World:
     def __init__(self) -> None:
         self.__tiles: list[list[Tile | None]] = [
@@ -92,11 +102,14 @@ class World:
 
         # Global player states
         self.coins = 0
+        self.inventorySelection = 0
 
     def update(self, actions: list[Action]):
         for action in actions:
             if isinstance(action, PlantCropAction):
-                self.__handlePlantCropAction(action)
+                self.handlePlantCropAction(action)
+            elif isinstance(action, ChangeInventorySelectionAction):
+                self.handleChangeInventorySelectionAction(action)
 
     def tileAt(self, pos: Coord):
         return self.__tiles[pos.y][pos.x]
@@ -109,7 +122,7 @@ class World:
     def removeTile(self, pos: Coord):
         self.__tiles[pos.y][pos.x] = None
 
-    def __handlePlantCropAction(self, action: PlantCropAction):
+    def handlePlantCropAction(self, action: PlantCropAction):
         existing = self.tileAt(action.pos)
 
         # if harvesting
@@ -118,6 +131,9 @@ class World:
             self.coins += 5
         else:
             self.addTile(Tile(action.pos, TileType.CROP))
+
+    def handleChangeInventorySelectionAction(self, action: ChangeInventorySelectionAction):
+        self.inventorySelection = action.selection
 
 
 class Direction(enum.Enum):

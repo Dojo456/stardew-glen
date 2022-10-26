@@ -8,10 +8,18 @@ from pytmx import TiledTileLayer  # type: ignore
 
 import color
 from constants import *
-from controller import (Action, Character, CharacterState, Coord,
-                        MoveCharacterAction, PlantCropAction, Tile, World)
+from controller import (Action, ChangeInventorySelectionAction, Character,
+                        CharacterState, Coord, MoveCharacterAction,
+                        PlantCropAction, Tile, World)
 
 os.environ['SDL_VIDEO_CENTERED'] = '1'
+
+
+INVENTORY_KEYS = [
+    pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4,
+    pygame.K_5, pygame.K_6, pygame.K_7, pygame.K_8,
+    pygame.K_9, pygame.K_0, pygame.K_MINUS, pygame.K_EQUALS
+]
 
 
 class InputStack:
@@ -62,6 +70,24 @@ class InputStack:
             return 0
 
         return 1 if val1 > val2 else -1
+
+    def highest(self, keys: list[int]):
+        sorted = keys.copy()
+
+        anyPressed = False
+
+        def key(x: int):
+            nonlocal anyPressed
+            val = self.dict.get(x, -1)
+
+            if val != -1:
+                anyPressed = True
+
+            return val
+
+        sorted.sort(key=key, reverse=True)
+
+        return sorted[0] if anyPressed else -1
 
 
 class DrawableCharacter(Character):
@@ -147,51 +173,23 @@ class Game:
 
     mouseReleased = True
 
-    def processInput(self):
+    def captureInputs(self):
         events = pygame.event.get()
 
         for event in events:
-            match event.type:
-                case pygame.QUIT:
-                    self.running = False
-                    break
-                case pygame.KEYDOWN:
-                    self.inputs.append(event.key)
-                case pygame.KEYUP:
-                    self.inputs.remove(event.key)
-                case pygame.MOUSEBUTTONDOWN:
-                    b = event.button
-                    a = -1
+            if event.type == pygame.QUIT:
+                self.running = False
+                break
+            elif event.type == pygame.KEYDOWN:
+                self.inputs.append(event.key)
+            elif event.type == pygame.KEYUP:
+                self.inputs.remove(event.key)
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                self.inputs.append(event.button)
+            elif event.type == pygame.MOUSEBUTTONUP:
+                self.inputs.remove(event.button)
 
-                    match(b):
-                        case 1:
-                            a = pygame.BUTTON_LEFT
-                        case 2:
-                            a = pygame.BUTTON_MIDDLE
-                        case 3:
-                            a = pygame.BUTTON_RIGHT
-                        case _:
-                            pass
-
-                    self.inputs.append(a)
-                case pygame.MOUSEBUTTONUP:
-                    b = event.button
-                    r = -1
-
-                    match(b):
-                        case 1:
-                            r = pygame.BUTTON_LEFT
-                        case 2:
-                            r = pygame.BUTTON_MIDDLE
-                        case 3:
-                            r = pygame.BUTTON_RIGHT
-                        case _:
-                            pass
-
-                    self.inputs.remove(r)
-                case _:
-                    pass
-
+    def processInputs(self):
         actions = list[Action]()
 
         x = self.inputs.compare(pygame.K_d, pygame.K_a)
@@ -203,6 +201,12 @@ class Game:
         if self.inputs.consume(pygame.BUTTON_LEFT):
             pos = self.player.closestTile
             actions.append(PlantCropAction(pos))
+
+        inventorySelection = self.inputs.highest(INVENTORY_KEYS)
+
+        if inventorySelection != -1:
+            actions.append(ChangeInventorySelectionAction(
+                INVENTORY_KEYS.index(inventorySelection)))
 
         self.actions = actions
 
@@ -243,12 +247,15 @@ class Game:
         self.image.blit(self.player.image(), (spriteX, spriteY))
 
         # HUD Elements
+
+        # FPS Counter
         fpsSurface = self.defaultFont.render(
             str(round(self.clock.get_fps())), False, color.GREEN)
         fpsRect = fpsSurface.get_rect()
         self.image.blit(
             fpsSurface, (0, DISPLAY_HEIGHT-fpsRect.height), fpsRect)
 
+        # Coin Counter
         coinsSurface = self.defaultFont.render(
             str(self.world.coins), False, color.RED4
         )
@@ -256,13 +263,26 @@ class Game:
         self.image.blit(
             coinsSurface, (DISPLAY_WIDTH-coinsRect.width-5, 5), coinsRect)
 
+        # Inventory Selection
+        inventorySlotPos = Vector2(
+            72 + (self.world.inventorySelection * 20), DISPLAY_HEIGHT - 25)
+        self.image.fill(color.RED1, Rect(
+            inventorySlotPos.x, inventorySlotPos.y, 20, 20))
+        inventorySlotText = self.defaultFont.render(
+            str(self.world.inventorySelection), False, color.BLACK)
+        self.image.blit(inventorySlotText, inventorySlotPos +
+                        Vector2((20 - inventorySlotText.get_width()) / 2,
+                                (20 - inventorySlotText.get_height()) / 2,
+                                ))
+
         pygame.transform.scale(
             self.image, self.display.get_size(), self.display)
         pygame.display.update()
 
     def run(self):
         while self.running:
-            self.processInput()
+            self.captureInputs()
+            self.processInputs()
             self.update()
             self.render()
             self.clock.tick(FRAME_LIMIT)
