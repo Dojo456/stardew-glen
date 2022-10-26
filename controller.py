@@ -31,12 +31,11 @@ class Coord:
 
 
 class TileType(enum.Enum):
-    CROP = 0
-
+    TILLED_DIRT = 0
+    CROP = 1
 
 class Tile:
-    def __init__(self, pos: Coord, type: TileType) -> None:
-        self.pos = pos
+    def __init__(self, type: TileType) -> None:
         self.type = type
 
 
@@ -63,12 +62,17 @@ class MoveCharacterAction(Action):
         self.x = x
         self.y = y
 
-
-class PlantCropAction(Action):
-    def __init__(self, at: Coord) -> None:
+class HoeGroundAction(Action):
+    def __init__(self, pos: Coord) -> None:
         super().__init__()
 
-        self.pos = at
+        self.pos = pos
+
+class PlantCropAction(Action):
+    def __init__(self, pos: Coord) -> None:
+        super().__init__()
+
+        self.pos = pos
 
 
 class ChangeInventorySelectionAction(Action):
@@ -83,8 +87,7 @@ class ChangeInventorySelectionAction(Action):
 
 class World:
     def __init__(self) -> None:
-        self.__tiles: list[list[Tile | None]] = [
-            [None]*int(WORLD_WIDTH / CELL_SIZE)] * int((WORLD_HEIGHT / CELL_SIZE))
+        self.__tiles: list[list[Tile | None]] = [[None] * int(WORLD_HEIGHT / CELL_SIZE) for _ in range(int(WORLD_WIDTH / CELL_SIZE))]
 
         self.mapData = load_pygame("./assets/tiled/minimap.tmx")
 
@@ -108,29 +111,41 @@ class World:
         for action in actions:
             if isinstance(action, PlantCropAction):
                 self.handlePlantCropAction(action)
+            elif isinstance(action, HoeGroundAction):
+                self.handleHoeGroundAction(action)
             elif isinstance(action, ChangeInventorySelectionAction):
                 self.handleChangeInventorySelectionAction(action)
 
     def tileAt(self, pos: Coord):
-        return self.__tiles[pos.y][pos.x]
+        return self.__tiles[pos.x][pos.y]
 
-    def addTile(self, tile: Tile):
-        pos = tile.pos
+    def setTile(self, pos: Coord, tile: Tile):
+        print(f"setting {tile.type} at {pos}")
 
-        self.__tiles[pos.y][pos.x] = tile
+        self.__tiles[pos.x][pos.y] = tile
 
     def removeTile(self, pos: Coord):
-        self.__tiles[pos.y][pos.x] = None
+        tile = self.tileAt(pos)
+
+        if tile != None:
+            print(f"removing {tile.type} at {pos}")
+
+        self.__tiles[pos.x][pos.y] = None
 
     def handlePlantCropAction(self, action: PlantCropAction):
         existing = self.tileAt(action.pos)
 
-        # if harvesting
-        if existing != None and existing.type == TileType.CROP:
+        if existing != None and existing.type == TileType.TILLED_DIRT:
+            self.setTile(action.pos, Tile(TileType.CROP))
+
+    def handleHoeGroundAction(self, action: HoeGroundAction):
+        existing = self.tileAt(action.pos)
+
+        if existing != None and existing.type == TileType.CROP: # if harvesting
             self.removeTile(action.pos)
             self.coins += 5
         else:
-            self.addTile(Tile(action.pos, TileType.CROP))
+            self.setTile(action.pos, Tile(TileType.TILLED_DIRT))
 
     def handleChangeInventorySelectionAction(self, action: ChangeInventorySelectionAction):
         self.inventorySelection = action.selection

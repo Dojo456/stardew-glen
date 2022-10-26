@@ -9,8 +9,9 @@ from pytmx import TiledTileLayer  # type: ignore
 import color
 from constants import *
 from controller import (Action, ChangeInventorySelectionAction, Character,
-                        CharacterState, Coord, MoveCharacterAction,
-                        PlantCropAction, Tile, World)
+                        CharacterState, Coord, HoeGroundAction,
+                        MoveCharacterAction, PlantCropAction, Tile, TileType,
+                        World)
 
 os.environ['SDL_VIDEO_CENTERED'] = '1'
 
@@ -132,19 +133,32 @@ class DrawableWorld(World):
                         self.image.blit(image, (x * CELL_SIZE, y * CELL_SIZE))
 
         self.dirtTileSet = pygame.image.load("./assets/hoed.png", "hoed dirt")
+        self.cropsTileSet = pygame.image.load("./assets/crops.png", "crops")
 
-        self.overlayImage = pygame.Surface((WORLD_WIDTH, WORLD_HEIGHT))
-        self.overlayImage.fill(color.MAGENTA)
-        self.overlayImage.set_colorkey(color.MAGENTA)
+        self.overlayImages = list[Surface]()
+        for _ in range(3):
+            image = pygame.Surface((WORLD_WIDTH, WORLD_HEIGHT))
+            image.fill(color.MAGENTA)
+            image.set_colorkey(color.MAGENTA)
 
-    def addTile(self, tile: Tile):
-        self.overlayImage.blit(self.dirtTileSet, (tile.pos.x * CELL_SIZE,
-                                                  tile.pos.y * CELL_SIZE), Rect(0, 0, CELL_SIZE, CELL_SIZE))
+            self.overlayImages.append(image)
 
-        return super().addTile(tile)
+    def setTile(self, pos: Coord, tile: Tile):
+        super().setTile(pos, tile)
+
+        updatedTile = self.tileAt(pos)
+
+        if updatedTile != None:
+            if updatedTile.type == TileType.TILLED_DIRT:
+                self.overlayImages[0].blit(self.dirtTileSet, (pos.x * CELL_SIZE,
+                                                    pos.y * CELL_SIZE), Rect(0, 0, CELL_SIZE, CELL_SIZE))
+            elif updatedTile.type == TileType.CROP:
+                self.overlayImages[1].blit(self.cropsTileSet, (pos.x * CELL_SIZE,
+                                                    (pos.y) * CELL_SIZE), Rect(0, CELL_SIZE, CELL_SIZE, CELL_SIZE))
 
     def removeTile(self, pos: Coord):
-        self.overlayImage.fill(color.MAGENTA, Rect(pos.x * CELL_SIZE,
+        for image in self.overlayImages:
+            image.fill(color.MAGENTA, Rect(pos.x * CELL_SIZE,
                                                    pos.y * CELL_SIZE, CELL_SIZE, CELL_SIZE))
 
         return super().removeTile(pos)
@@ -198,15 +212,20 @@ class Game:
         if not (x == y == 0):
             actions.append(MoveCharacterAction(x, y))
 
-        if self.inputs.consume(pygame.BUTTON_LEFT):
-            pos = self.player.closestTile
-            actions.append(PlantCropAction(pos))
-
         inventorySelection = self.inputs.highest(INVENTORY_KEYS)
 
         if inventorySelection != -1:
-            actions.append(ChangeInventorySelectionAction(
-                INVENTORY_KEYS.index(inventorySelection)))
+            actions.append(ChangeInventorySelectionAction(INVENTORY_KEYS.index(inventorySelection)))
+
+        if self.inputs.consume(pygame.BUTTON_LEFT):
+            pos = self.player.closestTile
+            
+            inventorySelection = self.world.inventorySelection
+
+            if inventorySelection == 0:
+                actions.append(HoeGroundAction(pos))
+            elif inventorySelection == 1:
+                actions.append(PlantCropAction(pos))
 
         self.actions = actions
 
@@ -240,8 +259,9 @@ class Game:
         # World Elements
         self.image.blit(self.world.image, (0, 0),
                         Rect(playerPos.x - spriteX, playerPos.y - spriteY, DISPLAY_WIDTH, DISPLAY_HEIGHT))
-        self.image.blit(self.world.overlayImage, (0, 0),
-                        Rect(playerPos.x - spriteX, playerPos.y - spriteY, DISPLAY_WIDTH, DISPLAY_HEIGHT))
+        for image in self.world.overlayImages:    
+            self.image.blit(image, (0, 0),
+                            Rect(playerPos.x - spriteX, playerPos.y - spriteY, DISPLAY_WIDTH, DISPLAY_HEIGHT))
 
         # Character
         self.image.blit(self.player.image(), (spriteX, spriteY))
