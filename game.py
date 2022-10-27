@@ -96,7 +96,7 @@ class DrawableCharacter(Character):
         super().__init__(world)
 
         self.identifier = identifier
-        self.tileSet = pygame.image.load(tileSet)
+        self.tileSet = pygame.image.load(tileSet).convert()
 
         self.epoch = time.time_ns()
         self.tick = 0
@@ -132,12 +132,15 @@ class DrawableWorld(World):
                     if isinstance(image, pygame.Surface):
                         self.image.blit(image, (x * CELL_SIZE, y * CELL_SIZE))
 
-        self.dirtTileSet = pygame.image.load("./assets/hoed.png", "hoed dirt")
-        self.cropsTileSet = pygame.image.load("./assets/crops.png", "crops")
+        self.dirtTileSet = pygame.image.load(
+            "./assets/hoed.png", "hoed dirt").convert()
+        self.cropsTileSet = pygame.image.load(
+            "./assets/crops.png", "crops").convert()
 
         self.overlayImages = list[Surface]()
         for _ in range(3):
-            image = pygame.Surface((WORLD_WIDTH, WORLD_HEIGHT))
+            image = pygame.Surface(
+                (WORLD_WIDTH, WORLD_HEIGHT), pygame.SRCALPHA, 32)
             image.fill(color.MAGENTA)
             image.set_colorkey(color.MAGENTA)
 
@@ -151,15 +154,15 @@ class DrawableWorld(World):
         if updatedTile != None:
             if updatedTile.type == TileType.TILLED_DIRT:
                 self.overlayImages[0].blit(self.dirtTileSet, (pos.x * CELL_SIZE,
-                                                    pos.y * CELL_SIZE), Rect(0, 0, CELL_SIZE, CELL_SIZE))
+                                                              pos.y * CELL_SIZE), Rect(0, 0, CELL_SIZE, CELL_SIZE))
             elif updatedTile.type == TileType.CROP:
                 self.overlayImages[1].blit(self.cropsTileSet, (pos.x * CELL_SIZE,
-                                                    (pos.y) * CELL_SIZE), Rect(0, CELL_SIZE, CELL_SIZE, CELL_SIZE))
+                                                               (pos.y) * CELL_SIZE), Rect(0, CELL_SIZE, CELL_SIZE, CELL_SIZE))
 
     def removeTile(self, pos: Coord):
         for image in self.overlayImages:
             image.fill(color.MAGENTA, Rect(pos.x * CELL_SIZE,
-                                                   pos.y * CELL_SIZE, CELL_SIZE, CELL_SIZE))
+                                           pos.y * CELL_SIZE, CELL_SIZE, CELL_SIZE))
 
         return super().removeTile(pos)
 
@@ -172,7 +175,8 @@ class Game:
         self.display = pygame.display.set_mode(
             (DISPLAY_WIDTH, DISPLAY_HEIGHT), pygame.RESIZABLE)
 
-        self.background = pygame.image.load("./assets/frog.png", "frog")
+        self.background = pygame.image.load(
+            "./assets/frog.png", "frog").convert()
         self.defaultFont = pygame.font.Font("./assets/font.ttf", 16)
 
         self.inputs = InputStack()
@@ -215,11 +219,12 @@ class Game:
         inventorySelection = self.inputs.highest(INVENTORY_KEYS)
 
         if inventorySelection != -1:
-            actions.append(ChangeInventorySelectionAction(INVENTORY_KEYS.index(inventorySelection)))
+            actions.append(ChangeInventorySelectionAction(
+                INVENTORY_KEYS.index(inventorySelection)))
 
         if self.inputs.consume(pygame.BUTTON_LEFT):
             pos = self.player.closestTile
-            
+
             inventorySelection = self.world.inventorySelection
 
             if inventorySelection == 0:
@@ -259,7 +264,7 @@ class Game:
         # World Elements
         self.image.blit(self.world.image, (0, 0),
                         Rect(playerPos.x - spriteX, playerPos.y - spriteY, DISPLAY_WIDTH, DISPLAY_HEIGHT))
-        for image in self.world.overlayImages:    
+        for image in self.world.overlayImages:
             self.image.blit(image, (0, 0),
                             Rect(playerPos.x - spriteX, playerPos.y - spriteY, DISPLAY_WIDTH, DISPLAY_HEIGHT))
 
