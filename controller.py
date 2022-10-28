@@ -1,4 +1,5 @@
 import enum
+import json
 import time
 
 import pygame
@@ -28,6 +29,31 @@ class Coord:
 
     def __repr__(self) -> str:
         return self.__str__()
+
+class ItemType(enum.Enum):
+    TOOL = "TOOL"
+    WEAPON = "WEAPON"
+
+class Item:
+    def __init__(self, type: ItemType, id: int, name: str, renderPos: str) -> None:
+        self.type = type
+        self.id = id
+        self.name = name
+        self.renderPos = renderPos
+
+class ItemLoader:
+    def __init__(self) -> None:
+        items = list[Item]()
+        itemsJson = json.loads(open("./assets/items.json").read())
+        for item in itemsJson:
+            items.append(Item(
+                ItemType(item["type"]),
+                item["id"],
+                item["name"],
+                item["renderPos"],
+            ))
+
+        self.items = items
 
 
 class TileType(enum.Enum):
@@ -106,6 +132,7 @@ class World:
         # Global player states
         self.coins = 0
         self.inventorySelection = 0
+        self.items: list[Item | None] = [None] * 12
 
     def update(self, actions: list[Action]):
         for action in actions:

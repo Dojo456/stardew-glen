@@ -9,9 +9,9 @@ from pytmx import TiledTileLayer  # type: ignore
 import color
 from constants import *
 from controller import (Action, ChangeInventorySelectionAction, Character,
-                        CharacterState, Coord, HoeGroundAction,
-                        MoveCharacterAction, PlantCropAction, Tile, TileType,
-                        World)
+                        CharacterState, Coord, HoeGroundAction, Item,
+                        ItemLoader, ItemType, MoveCharacterAction,
+                        PlantCropAction, Tile, TileType, World)
 
 os.environ['SDL_VIDEO_CENTERED'] = '1'
 
@@ -72,7 +72,7 @@ class InputStack:
 
         return 1 if val1 > val2 else -1
 
-    def highest(self, keys: list[int]):
+    def highest(self, keys: list[int], consume: bool=False, consumeAll: bool=False):
         sorted = keys.copy()
 
         anyPressed = False
@@ -88,8 +88,32 @@ class InputStack:
 
         sorted.sort(key=key, reverse=True)
 
-        return sorted[0] if anyPressed else -1
+        highest = sorted[0] if anyPressed else -1
 
+        if consume:
+            self.consume(highest)
+
+        if consumeAll:
+            for x in keys:
+                self.consume(x)
+
+        return highest
+
+class ItemManager(ItemLoader):
+    def __init__(self) -> None:
+        super().__init__()
+
+        self.toolsTileSet = pygame.image.load("./assets/tools.png").convert()
+
+    def getImage(self, item: Item):
+        image = pygame.Surface((CELL_SIZE, CELL_SIZE))
+        image.set_colorkey(color.MAGENTA)
+
+        if item.type == ItemType.TOOL:
+            renderPos = int(item.renderPos)
+            image.blit(self.toolsTileSet, (0, 0), Rect(5 * CELL_SIZE, (2 + (renderPos * 2)) * CELL_SIZE , CELL_SIZE, CELL_SIZE))
+
+        return image
 
 class DrawableCharacter(Character):
     def __init__(self, identifier: str, tileSet: str, world: World) -> None:
@@ -180,11 +204,15 @@ class Game:
         self.defaultFont = pygame.font.Font("./assets/font.ttf", 16)
 
         self.inputs = InputStack()
+        self.inputs.append(pygame.K_1)
 
         self.world = DrawableWorld()
         self.player = DrawableCharacter(
             "player", "./assets/penny.png", self.world)
+        self.itemManager = ItemManager()
         self.actions = list[Action]()
+
+        self.endInventoryChangeFlash = 0
 
         self.clock = pygame.time.Clock()
         self.running = True
@@ -216,11 +244,13 @@ class Game:
         if not (x == y == 0):
             actions.append(MoveCharacterAction(x, y))
 
-        inventorySelection = self.inputs.highest(INVENTORY_KEYS)
+        inventorySelection = self.inputs.highest(INVENTORY_KEYS, consumeAll=True)
 
+        self.inventoryChanged = False
         if inventorySelection != -1:
             actions.append(ChangeInventorySelectionAction(
                 INVENTORY_KEYS.index(inventorySelection)))
+            self.inventoryChanged = True
 
         if self.inputs.consume(pygame.BUTTON_LEFT):
             pos = self.player.closestTile
@@ -289,16 +319,39 @@ class Game:
             coinsSurface, (DISPLAY_WIDTH-coinsRect.width-5, 5), coinsRect)
 
         # Inventory Selection
-        inventorySlotPos = Vector2(
-            72 + (self.world.inventorySelection * 20), DISPLAY_HEIGHT - 25)
-        self.image.fill(color.RED1, Rect(
-            inventorySlotPos.x, inventorySlotPos.y, 20, 20))
-        inventorySlotText = self.defaultFont.render(
-            str(self.world.inventorySelection), False, color.BLACK)
-        self.image.blit(inventorySlotText, inventorySlotPos +
-                        Vector2((20 - inventorySlotText.get_width()) / 2,
-                                (20 - inventorySlotText.get_height()) / 2,
-                                ))
+        self.world.items[0] = self.itemManager.items[0]
+        
+        for i, item in enumerate(self.world.items):
+            inventorySlotPos = Vector2(
+                72 + (i * 20), DISPLAY_HEIGHT - 25)
+
+            if i == self.world.inventorySelection:
+                if self.inventoryChanged:
+                    self.endInventoryChangeFlash = time.time_ns() + 3e8
+
+                if time.time_ns() < self.endInventoryChangeFlash:
+                    l = -44 * (((self.endInventoryChangeFlash - time.time_ns() - 15e7) / 1e9) ** 2) + 1
+                    print(l)
+
+                    self.image.fill((int(255 * l), int(255 * l), int(255 * l)), Rect(inventorySlotPos.x, inventorySlotPos.y, 20, 20))
+
+                    continue
+
+            if item == None:
+                self.image.fill(color.RED1, Rect(
+                    inventorySlotPos.x, inventorySlotPos.y, 20, 20))
+                inventorySlotText = self.defaultFont.render(
+                    str(i), False, color.BLACK)
+                self.image.blit(inventorySlotText, inventorySlotPos +
+                                Vector2((20 - inventorySlotText.get_width()) / 2,
+                                        (20 - inventorySlotText.get_height()) / 2,
+                                        ))
+            else:
+                self.image.blit(self.itemManager.getImage(item), inventorySlotPos)
+        outlinePos = Vector2(
+                71 + (self.world.inventorySelection * 20), DISPLAY_HEIGHT - 26)
+        pygame.draw.rect(self.image, color.YELLOW2, Rect(outlinePos.x, outlinePos.y, 22, 22), 1)
+
 
         pygame.transform.scale(
             self.image, self.display.get_size(), self.display)
