@@ -4,5 +4,11 @@
         "name": "Hoe",
         "type": "TOOL",
         "renderPos": "0"
+    },
+    {
+        "id": 1,
+        "name": "Parsnip Seeds",
+        "type": "SEED",
+        "renderPos": 0
     }
 ]

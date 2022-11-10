@@ -30,9 +30,12 @@ class Coord:
     def __repr__(self) -> str:
         return self.__str__()
 
+
 class ItemType(enum.Enum):
     TOOL = "TOOL"
     WEAPON = "WEAPON"
+    SEED = "SEED"
+
 
 class Item:
     def __init__(self, type: ItemType, id: int, name: str, renderPos: str) -> None:
@@ -40,6 +43,7 @@ class Item:
         self.id = id
         self.name = name
         self.renderPos = renderPos
+
 
 class ItemLoader:
     def __init__(self) -> None:
@@ -59,6 +63,7 @@ class ItemLoader:
 class TileType(enum.Enum):
     TILLED_DIRT = 0
     CROP = 1
+
 
 class Tile:
     def __init__(self, type: TileType) -> None:
@@ -88,11 +93,13 @@ class MoveCharacterAction(Action):
         self.x = x
         self.y = y
 
+
 class HoeGroundAction(Action):
     def __init__(self, pos: Coord) -> None:
         super().__init__()
 
         self.pos = pos
+
 
 class PlantCropAction(Action):
     def __init__(self, pos: Coord) -> None:
@@ -113,7 +120,8 @@ class ChangeInventorySelectionAction(Action):
 
 class World:
     def __init__(self) -> None:
-        self.__tiles: list[list[Tile | None]] = [[None] * int(WORLD_HEIGHT / CELL_SIZE) for _ in range(int(WORLD_WIDTH / CELL_SIZE))]
+        self.__tiles: list[list[Tile | None]] = [
+            [None] * int(WORLD_HEIGHT / CELL_SIZE) for _ in range(int(WORLD_WIDTH / CELL_SIZE))]
 
         self.mapData = load_pygame("./assets/tiled/minimap.tmx")
 
@@ -168,7 +176,7 @@ class World:
     def handleHoeGroundAction(self, action: HoeGroundAction):
         existing = self.tileAt(action.pos)
 
-        if existing != None and existing.type == TileType.CROP: # if harvesting
+        if existing != None and existing.type == TileType.CROP:  # if harvesting
             self.removeTile(action.pos)
             self.coins += 5
         else:
@@ -191,7 +199,7 @@ class CharacterState(enum.Enum):
     SITTING = 2
 
 
-CHARACTER_SPEED = 150
+CHARACTER_SPEED = 100
 ANIMATION_SPEED = 2
 
 

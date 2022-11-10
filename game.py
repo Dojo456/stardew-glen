@@ -72,7 +72,7 @@ class InputStack:
 
         return 1 if val1 > val2 else -1
 
-    def highest(self, keys: list[int], consume: bool=False, consumeAll: bool=False):
+    def highest(self, keys: list[int], consume: bool = False, consumeAll: bool = False):
         sorted = keys.copy()
 
         anyPressed = False
@@ -99,11 +99,15 @@ class InputStack:
 
         return highest
 
+
 class ItemManager(ItemLoader):
     def __init__(self) -> None:
         super().__init__()
 
-        self.toolsTileSet = pygame.image.load("./assets/tools.png").convert()
+        self.toolsTileSet = pygame.image.load(
+            "./assets/items/tools.png").convert()
+        self.cropsTileSet = pygame.image.load(
+            "./assets/items/crops.png").convert()
 
     def getImage(self, item: Item):
         image = pygame.Surface((CELL_SIZE, CELL_SIZE))
@@ -111,9 +115,11 @@ class ItemManager(ItemLoader):
 
         if item.type == ItemType.TOOL:
             renderPos = int(item.renderPos)
-            image.blit(self.toolsTileSet, (0, 0), Rect(5 * CELL_SIZE, (2 + (renderPos * 2)) * CELL_SIZE , CELL_SIZE, CELL_SIZE))
+            image.blit(self.toolsTileSet, (0, 0), Rect(
+                5 * CELL_SIZE, (2 + (renderPos * 2)) * CELL_SIZE, CELL_SIZE, CELL_SIZE))
 
         return image
+
 
 class DrawableCharacter(Character):
     def __init__(self, identifier: str, tileSet: str, world: World) -> None:
@@ -157,18 +163,12 @@ class DrawableWorld(World):
                         self.image.blit(image, (x * CELL_SIZE, y * CELL_SIZE))
 
         self.dirtTileSet = pygame.image.load(
-            "./assets/hoed.png", "hoed dirt").convert()
+            "./assets/hoed.png", "hoed dirt")
         self.cropsTileSet = pygame.image.load(
-            "./assets/crops.png", "crops").convert()
+            "./assets/crops.png", "crops")
 
-        self.overlayImages = list[Surface]()
-        for _ in range(3):
-            image = pygame.Surface(
-                (WORLD_WIDTH, WORLD_HEIGHT), pygame.SRCALPHA, 32)
-            image.fill(color.MAGENTA)
-            image.set_colorkey(color.MAGENTA)
-
-            self.overlayImages.append(image)
+        self.overlayImage = pygame.Surface(
+            (WORLD_WIDTH, WORLD_HEIGHT), pygame.SRCALPHA, 32)
 
     def setTile(self, pos: Coord, tile: Tile):
         super().setTile(pos, tile)
@@ -177,16 +177,15 @@ class DrawableWorld(World):
 
         if updatedTile != None:
             if updatedTile.type == TileType.TILLED_DIRT:
-                self.overlayImages[0].blit(self.dirtTileSet, (pos.x * CELL_SIZE,
-                                                              pos.y * CELL_SIZE), Rect(0, 0, CELL_SIZE, CELL_SIZE))
+                self.overlayImage.blit(self.dirtTileSet, (pos.x * CELL_SIZE,
+                                                          pos.y * CELL_SIZE), Rect(0, 0, CELL_SIZE, CELL_SIZE))
             elif updatedTile.type == TileType.CROP:
-                self.overlayImages[1].blit(self.cropsTileSet, (pos.x * CELL_SIZE,
-                                                               (pos.y) * CELL_SIZE), Rect(0, CELL_SIZE, CELL_SIZE, CELL_SIZE))
+                self.overlayImage.blit(self.cropsTileSet, (pos.x * CELL_SIZE,
+                                                           (pos.y) * CELL_SIZE), Rect(0, CELL_SIZE, CELL_SIZE, CELL_SIZE))
 
     def removeTile(self, pos: Coord):
-        for image in self.overlayImages:
-            image.fill(color.MAGENTA, Rect(pos.x * CELL_SIZE,
-                                           pos.y * CELL_SIZE, CELL_SIZE, CELL_SIZE))
+        self.overlayImage.fill((0, 0, 0, 0), Rect(pos.x * CELL_SIZE,
+                                                  pos.y * CELL_SIZE, CELL_SIZE, CELL_SIZE))
 
         return super().removeTile(pos)
 
@@ -244,7 +243,8 @@ class Game:
         if not (x == y == 0):
             actions.append(MoveCharacterAction(x, y))
 
-        inventorySelection = self.inputs.highest(INVENTORY_KEYS, consumeAll=True)
+        inventorySelection = self.inputs.highest(
+            INVENTORY_KEYS, consumeAll=True)
 
         self.inventoryChanged = False
         if inventorySelection != -1:
@@ -294,9 +294,8 @@ class Game:
         # World Elements
         self.image.blit(self.world.image, (0, 0),
                         Rect(playerPos.x - spriteX, playerPos.y - spriteY, DISPLAY_WIDTH, DISPLAY_HEIGHT))
-        for image in self.world.overlayImages:
-            self.image.blit(image, (0, 0),
-                            Rect(playerPos.x - spriteX, playerPos.y - spriteY, DISPLAY_WIDTH, DISPLAY_HEIGHT))
+        self.image.blit(self.world.overlayImage, (0, 0),
+                        Rect(playerPos.x - spriteX, playerPos.y - spriteY, DISPLAY_WIDTH, DISPLAY_HEIGHT))
 
         # Character
         self.image.blit(self.player.image(), (spriteX, spriteY))
@@ -320,7 +319,7 @@ class Game:
 
         # Inventory Selection
         self.world.items[0] = self.itemManager.items[0]
-        
+
         for i, item in enumerate(self.world.items):
             inventorySlotPos = Vector2(
                 72 + (i * 20), DISPLAY_HEIGHT - 25)
@@ -330,10 +329,12 @@ class Game:
                     self.endInventoryChangeFlash = time.time_ns() + 3e8
 
                 if time.time_ns() < self.endInventoryChangeFlash:
-                    l = -44 * (((self.endInventoryChangeFlash - time.time_ns() - 15e7) / 1e9) ** 2) + 1
+                    l = -44 * (((self.endInventoryChangeFlash -
+                               time.time_ns() - 15e7) / 1e9) ** 2) + 1
                     print(l)
 
-                    self.image.fill((int(255 * l), int(255 * l), int(255 * l)), Rect(inventorySlotPos.x, inventorySlotPos.y, 20, 20))
+                    self.image.fill((int(255 * l), int(255 * l), int(255 * l)),
+                                    Rect(inventorySlotPos.x, inventorySlotPos.y, 20, 20))
 
                     continue
 
@@ -347,11 +348,12 @@ class Game:
                                         (20 - inventorySlotText.get_height()) / 2,
                                         ))
             else:
-                self.image.blit(self.itemManager.getImage(item), inventorySlotPos)
+                self.image.blit(self.itemManager.getImage(
+                    item), inventorySlotPos)
         outlinePos = Vector2(
-                71 + (self.world.inventorySelection * 20), DISPLAY_HEIGHT - 26)
-        pygame.draw.rect(self.image, color.YELLOW2, Rect(outlinePos.x, outlinePos.y, 22, 22), 1)
-
+            71 + (self.world.inventorySelection * 20), DISPLAY_HEIGHT - 26)
+        pygame.draw.rect(self.image, color.YELLOW2, Rect(
+            outlinePos.x, outlinePos.y, 22, 22), 1)
 
         pygame.transform.scale(
             self.image, self.display.get_size(), self.display)
