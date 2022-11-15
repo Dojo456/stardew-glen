@@ -7,11 +7,13 @@ from pygame import Rect, Surface
 from pytmx import TiledTileLayer  # type: ignore
 
 import color
+import items
 from constants import *
 from controller import (Action, ChangeInventorySelectionAction, Character,
-                        CharacterState, Coord, HoeGroundAction, Item,
-                        ItemLoader, ItemType, MoveCharacterAction,
-                        PlantCropAction, Tile, TileType, World)
+                        CharacterState, Coord, HoeGroundAction, ItemStack,
+                        MoveCharacterAction, PlantCropAction, Tile, TileType,
+                        World)
+from items import Item, ItemType
 
 os.environ['SDL_VIDEO_CENTERED'] = '1'
 
@@ -100,17 +102,18 @@ class InputStack:
         return highest
 
 
-class ItemRenderer(ItemLoader):
+class ItemRenderer():
     def __init__(self) -> None:
-        super().__init__()
-
         self.toolsTileSet = pygame.image.load(
             "./assets/items/tools.png")
         self.cropsTileSet = pygame.image.load(
             "./assets/items/crops.png")
 
-    def getImage(self, item: Item):
+    def getImage(self, item: Item | ItemStack):
         image = pygame.Surface((CELL_SIZE, CELL_SIZE), pygame.SRCALPHA)
+
+        if isinstance(item, ItemStack):
+            item = item.item
 
         if item.type == ItemType.TOOL:
             renderPos = int(item.renderPos)
@@ -124,6 +127,16 @@ class ItemRenderer(ItemLoader):
 
             image.blit(self.cropsTileSet, (0, 0), Rect(
                 renderPosX * CELL_SIZE * 8, (renderPosY * CELL_SIZE * 2) + CELL_SIZE, CELL_SIZE, CELL_SIZE))
+        elif item.type == ItemType.CROP:
+            renderPositions = item.renderPos.split("-")
+            renderPos = int(renderPositions[0])
+            col = int(renderPositions[1])
+
+            renderPosX = renderPos % 2
+            renderPosY = renderPos / 2
+
+            image.blit(self.cropsTileSet, (0, 0), Rect(
+                (renderPosX * CELL_SIZE * 8) + (col * CELL_SIZE), (renderPosY * CELL_SIZE * 2) + CELL_SIZE, CELL_SIZE, CELL_SIZE))
 
         return image
 
@@ -219,8 +232,8 @@ class Game:
         self.actions = list[Action]()
 
         # TODO Temporary select an item for testing
-        self.world.inventoryManager.addItem(self.itemRenderer.itemWithID(0))
-        self.world.inventoryManager.addItem(self.itemRenderer.itemWithID(1))
+        self.world.inventoryManager.addItem(items.itemWithID(0))
+        self.world.inventoryManager.addItem(items.itemWithID(1))
 
         self.endInventoryChangeFlash = 0
 
@@ -266,7 +279,7 @@ class Game:
         if self.inputs.consume(pygame.BUTTON_LEFT):
             pos = self.player.closestTile
 
-            inventorySelection = self.world.inventorySelection
+            inventorySelection = self.world.inventoryManager.slotSelection
 
             if inventorySelection == 0:
                 actions.append(HoeGroundAction(pos))
@@ -311,7 +324,7 @@ class Game:
         # Character
         self.image.blit(self.player.image(), (spriteX, spriteY))
 
-        # HUD Elements
+        """HUD Elements"""
 
         # FPS Counter
         fpsSurface = self.defaultFont.render(
@@ -321,8 +334,13 @@ class Game:
             fpsSurface, (0, DISPLAY_HEIGHT-fpsRect.height), fpsRect)
 
         # Coin Counter
+        temp = self.world.inventoryManager.currentItems[2]
+        count = 0
+        if isinstance(temp, ItemStack):
+            count = temp.count
+
         coinsSurface = self.defaultFont.render(
-            str(self.world.coins), False, color.RED4
+            str(count), False, color.RED4  # type: ignore
         )
         coinsRect = coinsSurface.get_rect()
         self.image.blit(
@@ -334,7 +352,7 @@ class Game:
             inventorySlotPos = Vector2(
                 66 + (i * 21), DISPLAY_HEIGHT - 25)
 
-            isSelection = i == self.world.inventorySelection
+            isSelection = i == self.world.inventoryManager.slotSelection
 
             if isSelection:
                 if self.inventoryChanged:
@@ -365,7 +383,7 @@ class Game:
 
         # Selection Outline
         outlinePos = Vector2(
-            65 + (self.world.inventorySelection * 21), DISPLAY_HEIGHT - 26)
+            65 + (self.world.inventoryManager.slotSelection * 21), DISPLAY_HEIGHT - 26)
         pygame.draw.rect(self.image, color.YELLOW2, Rect(
             outlinePos.x, outlinePos.y, 22, 22), 1)
 

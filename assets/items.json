@@ -10,5 +10,12 @@
         "name": "Parsnip Seeds",
         "type": "SEED",
         "renderPos": 0
+    },
+    {
+        "id": 2,
+        "name": "Parsnip",
+        "type": "CROP",
+        "renderPos": "0-5",
+        "stackable": true
     }
 ]

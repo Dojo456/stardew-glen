@@ -1,5 +1,4 @@
 import enum
-import json
 import time
 
 import pygame
@@ -7,10 +6,15 @@ from pytmx import TiledObject, TiledObjectGroup, load_pygame  # type: ignore
 from shapely import geometry  # type: ignore
 from shapely.ops import nearest_points  # type: ignore
 
+import items
 from constants import *
+from items import Item, ItemStack
 
 HITBOX_VEC = Vector2(CELL_SIZE /
                      2, CELL_SIZE * 1.5)
+
+CHARACTER_SPEED = 100
+ANIMATION_SPEED = 3.5
 
 
 class Coord:
@@ -31,44 +35,12 @@ class Coord:
         return self.__str__()
 
 
-class ItemType(enum.Enum):
-    TOOL = "TOOL"
-    WEAPON = "WEAPON"
-    SEED = "SEED"
-
-
-class Item:
-    def __init__(self, type: ItemType, id: int, name: str, renderPos: str) -> None:
-        self.type = type
-        self.id = id
-        self.name = name
-        self.renderPos = renderPos
-
-
-class ItemLoader:
-    def __init__(self) -> None:
-        allItems = list[Item]()
-        itemsJson = json.loads(open("./assets/items.json").read())
-        for item in itemsJson:
-            allItems.append(Item(
-                ItemType(item["type"]),
-                item["id"],
-                item["name"],
-                item["renderPos"],
-            ))
-
-        self._allItems = allItems
-
-    def itemWithID(self, id: int):
-        return self._allItems[id]
-
-
 class InventoryManager:
-    items: list[Item | None]
+    items: list[Item | ItemStack | None]
 
     def __init__(self, rowCount: int = 1) -> None:
         self.items = [None] * (12 * rowCount)
-        self.itemSelection = 0
+        self.slotSelection = 0
         self.rowSelection = 0
         self.rowCount = rowCount
 
@@ -76,16 +48,29 @@ class InventoryManager:
         print("adding item")
 
         if slot == -1:  # did not specify slot, auto stack and first on row
+            if item.stackable:
+                for thisItem in self.items:
+                    if isinstance(thisItem, ItemStack) and thisItem.item.id == item.id:
+                        thisItem.add()
+                        return
+
             rowOffset = self.rowSelection * 12
             for i in range(12):
                 index = i + rowOffset
-                if self.items[index] == None:  # if free slot
-                    self.items[index] = item
+
+                itemSlot = self.items[index]
+
+                if itemSlot == None:
+                    if item.stackable:
+                        self.items[index] = ItemStack(item)
+                    else:
+                        self.items[index] = item
+
                     return
 
     @property
     def currentItems(self):
-        row = list[Item | None]()
+        row = list[Item | ItemStack | None]()
         rowOffset = self.rowSelection * 12
 
         for i in range(12):
@@ -142,6 +127,13 @@ class PlantCropAction(Action):
         self.pos = pos
 
 
+class AddItemAction(Action):
+    def __init__(self, item: Item) -> None:
+        super().__init__()
+
+        self.item = item
+
+
 class ChangeInventorySelectionAction(Action):
     def __init__(self, selection: int) -> None:
         super().__init__()
@@ -171,18 +163,25 @@ class World:
             "spawnPoint")
         self.spawnPoint = Vector2(spawnPoint.x, spawnPoint.y)
 
+        self.queuedActions = list[Action]()
+
         # Global player states
         self.coins = 0
         self.inventoryManager = InventoryManager()
 
     def update(self, actions: list[Action]):
-        for action in actions:
+        allActions = self.queuedActions + actions
+        self.queuedActions = list[Action]()
+
+        for action in allActions:
             if isinstance(action, PlantCropAction):
                 self.handlePlantCropAction(action)
             elif isinstance(action, HoeGroundAction):
                 self.handleHoeGroundAction(action)
             elif isinstance(action, ChangeInventorySelectionAction):
                 self.handleChangeInventorySelectionAction(action)
+            elif isinstance(action, AddItemAction):
+                self.handleAddItemAction(action)
 
     def tileAt(self, pos: Coord):
         return self.__tiles[pos.x][pos.y]
@@ -211,12 +210,15 @@ class World:
 
         if existing != None and existing.type == TileType.CROP:  # if harvesting
             self.removeTile(action.pos)
-            self.coins += 5
+            self.queuedActions.append(AddItemAction(items.itemWithID(2)))
         else:
             self.setTile(action.pos, Tile(TileType.TILLED_DIRT))
 
     def handleChangeInventorySelectionAction(self, action: ChangeInventorySelectionAction):
-        self.inventorySelection = action.selection
+        self.inventoryManager.slotSelection = action.selection
+
+    def handleAddItemAction(self, action: AddItemAction):
+        self.inventoryManager.addItem(action.item)
 
 
 class Direction(enum.Enum):
@@ -230,10 +232,6 @@ class CharacterState(enum.Enum):
     STANDING = 0
     WALKING = 1
     SITTING = 2
-
-
-CHARACTER_SPEED = 100
-ANIMATION_SPEED = 2
 
 
 class Character(object):
@@ -263,9 +261,9 @@ class Character(object):
         self.accumulated += elapsed
         self.epoch = now
 
-        # if more than one fourth of a second has elapsed, update tick
-        if self.accumulated > (25e7):
-            self.accumulated -= 25e7
+        # if enough time has elapsed for one frame of animation, update tick
+        if self.accumulated > (1e9 / ANIMATION_SPEED):
+            self.accumulated -= 1e9 / ANIMATION_SPEED
             self.tick = (self.tick + 1) % 4
 
         # 1e9 is the number of nanoseconds in a second
