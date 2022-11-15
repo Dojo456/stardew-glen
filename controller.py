@@ -47,17 +47,51 @@ class Item:
 
 class ItemLoader:
     def __init__(self) -> None:
-        items = list[Item]()
+        allItems = list[Item]()
         itemsJson = json.loads(open("./assets/items.json").read())
         for item in itemsJson:
-            items.append(Item(
+            allItems.append(Item(
                 ItemType(item["type"]),
                 item["id"],
                 item["name"],
                 item["renderPos"],
             ))
 
-        self.items = items
+        self._allItems = allItems
+
+    def itemWithID(self, id: int):
+        return self._allItems[id]
+
+
+class InventoryManager:
+    items: list[Item | None]
+
+    def __init__(self, rowCount: int = 1) -> None:
+        self.items = [None] * (12 * rowCount)
+        self.itemSelection = 0
+        self.rowSelection = 0
+        self.rowCount = rowCount
+
+    def addItem(self, item: Item, slot: int = -1):
+        print("adding item")
+
+        if slot == -1:  # did not specify slot, auto stack and first on row
+            rowOffset = self.rowSelection * 12
+            for i in range(12):
+                index = i + rowOffset
+                if self.items[index] == None:  # if free slot
+                    self.items[index] = item
+                    return
+
+    @property
+    def currentItems(self):
+        row = list[Item | None]()
+        rowOffset = self.rowSelection * 12
+
+        for i in range(12):
+            row.append(self.items[i + rowOffset])
+
+        return row
 
 
 class TileType(enum.Enum):
@@ -139,8 +173,7 @@ class World:
 
         # Global player states
         self.coins = 0
-        self.inventorySelection = 0
-        self.items: list[Item | None] = [None] * 12
+        self.inventoryManager = InventoryManager()
 
     def update(self, actions: list[Action]):
         for action in actions:

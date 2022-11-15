@@ -100,23 +100,30 @@ class InputStack:
         return highest
 
 
-class ItemManager(ItemLoader):
+class ItemRenderer(ItemLoader):
     def __init__(self) -> None:
         super().__init__()
 
         self.toolsTileSet = pygame.image.load(
-            "./assets/items/tools.png").convert()
+            "./assets/items/tools.png")
         self.cropsTileSet = pygame.image.load(
-            "./assets/items/crops.png").convert()
+            "./assets/items/crops.png")
 
     def getImage(self, item: Item):
-        image = pygame.Surface((CELL_SIZE, CELL_SIZE))
-        image.set_colorkey(color.MAGENTA)
+        image = pygame.Surface((CELL_SIZE, CELL_SIZE), pygame.SRCALPHA)
 
         if item.type == ItemType.TOOL:
             renderPos = int(item.renderPos)
             image.blit(self.toolsTileSet, (0, 0), Rect(
                 5 * CELL_SIZE, (2 + (renderPos * 2)) * CELL_SIZE, CELL_SIZE, CELL_SIZE))
+        elif item.type == ItemType.SEED:
+            renderPos = int(item.renderPos)
+
+            renderPosX = renderPos % 2
+            renderPosY = renderPos / 2
+
+            image.blit(self.cropsTileSet, (0, 0), Rect(
+                renderPosX * CELL_SIZE * 8, (renderPosY * CELL_SIZE * 2) + CELL_SIZE, CELL_SIZE, CELL_SIZE))
 
         return image
 
@@ -208,8 +215,12 @@ class Game:
         self.world = DrawableWorld()
         self.player = DrawableCharacter(
             "player", "./assets/penny.png", self.world)
-        self.itemManager = ItemManager()
+        self.itemRenderer = ItemRenderer()
         self.actions = list[Action]()
+
+        # TODO Temporary select an item for testing
+        self.world.inventoryManager.addItem(self.itemRenderer.itemWithID(0))
+        self.world.inventoryManager.addItem(self.itemRenderer.itemWithID(1))
 
         self.endInventoryChangeFlash = 0
 
@@ -317,30 +328,26 @@ class Game:
         self.image.blit(
             coinsSurface, (DISPLAY_WIDTH-coinsRect.width-5, 5), coinsRect)
 
-        # Inventory Selection
-        self.world.items[0] = self.itemManager.items[0]
+        self.image.fill(color.ORANGE2, Rect(66, DISPLAY_HEIGHT - 25, 252, 20))
 
-        for i, item in enumerate(self.world.items):
+        for i, item in enumerate(self.world.inventoryManager.currentItems):
             inventorySlotPos = Vector2(
-                72 + (i * 20), DISPLAY_HEIGHT - 25)
+                66 + (i * 21), DISPLAY_HEIGHT - 25)
 
-            if i == self.world.inventorySelection:
+            isSelection = i == self.world.inventorySelection
+
+            if isSelection:
                 if self.inventoryChanged:
                     self.endInventoryChangeFlash = time.time_ns() + 3e8
 
                 if time.time_ns() < self.endInventoryChangeFlash:
                     l = -44 * (((self.endInventoryChangeFlash -
                                time.time_ns() - 15e7) / 1e9) ** 2) + 1
-                    print(l)
 
                     self.image.fill((int(255 * l), int(255 * l), int(255 * l)),
                                     Rect(inventorySlotPos.x, inventorySlotPos.y, 20, 20))
 
-                    continue
-
             if item == None:
-                self.image.fill(color.RED1, Rect(
-                    inventorySlotPos.x, inventorySlotPos.y, 20, 20))
                 inventorySlotText = self.defaultFont.render(
                     str(i), False, color.BLACK)
                 self.image.blit(inventorySlotText, inventorySlotPos +
@@ -348,10 +355,17 @@ class Game:
                                         (20 - inventorySlotText.get_height()) / 2,
                                         ))
             else:
-                self.image.blit(self.itemManager.getImage(
-                    item), inventorySlotPos)
+                self.image.blit(self.itemRenderer.getImage(
+                    item), inventorySlotPos + Vector2(1, 1))
+
+            outlinePos = Vector2(
+                65 + (i * 21), DISPLAY_HEIGHT - 26)
+            pygame.draw.rect(self.image, color.ORANGE4, Rect(
+                outlinePos.x, outlinePos.y, 22, 22), 1)
+
+        # Selection Outline
         outlinePos = Vector2(
-            71 + (self.world.inventorySelection * 20), DISPLAY_HEIGHT - 26)
+            65 + (self.world.inventorySelection * 21), DISPLAY_HEIGHT - 26)
         pygame.draw.rect(self.image, color.YELLOW2, Rect(
             outlinePos.x, outlinePos.y, 22, 22), 1)
 
