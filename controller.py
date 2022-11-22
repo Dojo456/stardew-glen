@@ -34,12 +34,11 @@ class Coord:
     def __repr__(self) -> str:
         return self.__str__()
 
+InventorySlot = Item | ItemStack | None
 
 class InventoryManager:
-    items: list[Item | ItemStack | None]
-
     def __init__(self, rowCount: int = 1) -> None:
-        self.items = [None] * (12 * rowCount)
+        self.items: list[InventorySlot] = [None] * (12 * rowCount)
         self.slotSelection = 0
         self.rowSelection = 0
         self.rowCount = rowCount
@@ -69,8 +68,14 @@ class InventoryManager:
                     return
 
     @property
-    def currentItems(self):
-        row = list[Item | ItemStack | None]()
+    def itemSelection(self) -> InventorySlot:
+        index = (self.rowSelection * 12) + self.slotSelection
+
+        return self.items[index]
+
+    @property
+    def currentItems(self) -> list[InventorySlot]:
+        row = list[InventorySlot]()
         rowOffset = self.rowSelection * 12
 
         for i in range(12):
@@ -87,6 +92,15 @@ class TileType(enum.Enum):
 class Tile:
     def __init__(self, type: TileType) -> None:
         self.type = type
+
+class CropTile(Tile):
+    def __init__(self, seed: Item) -> None:
+        if seed.type != items.ItemType.SEED:
+            raise ValueError("item must be of type SEED")
+
+        self.item = items.itemWithID(seed.plants)
+
+        super().__init__(TileType.CROP)
 
 
 class Action:
@@ -120,11 +134,15 @@ class HoeGroundAction(Action):
         self.pos = pos
 
 
-class PlantCropAction(Action):
-    def __init__(self, pos: Coord) -> None:
+class PlantSeedAction(Action):
+    def __init__(self, pos: Coord, seed: Item) -> None:
+        if seed.type != items.ItemType.SEED:
+            raise TypeError("must be of type SEED")
+
         super().__init__()
 
         self.pos = pos
+        self.seed = seed
 
 
 class AddItemAction(Action):
@@ -174,7 +192,7 @@ class World:
         self.queuedActions = list[Action]()
 
         for action in allActions:
-            if isinstance(action, PlantCropAction):
+            if isinstance(action, PlantSeedAction):
                 self.handlePlantCropAction(action)
             elif isinstance(action, HoeGroundAction):
                 self.handleHoeGroundAction(action)
@@ -199,11 +217,11 @@ class World:
 
         self.__tiles[pos.x][pos.y] = None
 
-    def handlePlantCropAction(self, action: PlantCropAction):
+    def handlePlantCropAction(self, action: PlantSeedAction):
         existing = self.tileAt(action.pos)
 
         if existing != None and existing.type == TileType.TILLED_DIRT:
-            self.setTile(action.pos, Tile(TileType.CROP))
+            self.setTile(action.pos, CropTile(action.seed))
 
     def handleHoeGroundAction(self, action: HoeGroundAction):
         existing = self.tileAt(action.pos)

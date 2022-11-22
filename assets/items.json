@@ -2,20 +2,23 @@
     {
         "id": 0,
         "name": "Hoe",
-        "type": "TOOL",
+        "type": "HOE",
         "renderPos": "0"
     },
     {
         "id": 1,
         "name": "Parsnip Seeds",
         "type": "SEED",
-        "renderPos": 0
+        "renderPos": 0,
+        "plants": 2
     },
     {
         "id": 2,
         "name": "Parsnip",
         "type": "CROP",
         "renderPos": "0-5",
-        "stackable": true
+        "stackable": true,
+        "matures": 3,
+        "season": "SPRING"
     }
 ]

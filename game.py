@@ -12,7 +12,7 @@ import items
 from constants import *
 from controller import (Action, ChangeInventorySelectionAction, Character,
                         CharacterState, Coord, HoeGroundAction, ItemStack,
-                        MoveCharacterAction, PlantCropAction, Tile, TileType,
+                        MoveCharacterAction, PlantSeedAction, Tile, TileType,
                         World)
 from items import Item, ItemType
 
@@ -116,7 +116,7 @@ class ItemRenderer():
         if isinstance(item, ItemStack):
             item = item.item
 
-        if item.type == ItemType.TOOL:
+        if item.type == ItemType.HOE:
             renderPos = int(item.renderPos)
             image.blit(self.toolsTileSet, (0, 0), Rect(
                 5 * CELL_SIZE, (2 + (renderPos * 2)) * CELL_SIZE, CELL_SIZE, CELL_SIZE))
@@ -287,12 +287,19 @@ class Game:
         if self.inputs.consume(pygame.BUTTON_LEFT):
             pos = self.player.closestTile
 
-            inventorySelection = self.world.inventoryManager.slotSelection
+            itemSelection = self.world.inventoryManager.itemSelection
 
-            if inventorySelection == 0:
-                actions.append(HoeGroundAction(pos))
-            elif inventorySelection == 1:
-                actions.append(PlantCropAction(pos))
+            item = None
+            if isinstance(itemSelection, Item):
+                item = itemSelection
+            elif isinstance(itemSelection, ItemStack):
+                item = itemSelection.item
+                
+            if item != None:
+                if item.type == ItemType.HOE:
+                    actions.append(HoeGroundAction(pos))
+                elif item.type == ItemType.SEED:
+                    actions.append(PlantSeedAction(pos, item))
 
         self.actions = actions
 
@@ -301,7 +308,11 @@ class Game:
         self.world.update(self.actions)
 
     def render(self):
-        # Background
+        self.drawWorld()
+        self.drawHUD()
+
+    def drawWorld(self):
+                # Background
         self.image.fill(color.BLACK)
 
         playerPos = self.player.pos
@@ -336,9 +347,8 @@ class Game:
         # Character
         self.image.blit(self.player.image(), (spriteX, spriteY))
 
-        """HUD Elements"""
-
-        # FPS Counter
+    def drawHUD(self):
+          # FPS Counter
         fpsSurface = self.defaultFont.render(
             str(round(self.clock.get_fps())), False, color.GREEN)
         fpsRect = fpsSurface.get_rect()

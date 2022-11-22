@@ -3,19 +3,38 @@ import json
 
 
 class ItemType(enum.Enum):
-    TOOL = "TOOL"
-    WEAPON = "WEAPON"
+    HOE = "HOE"
+    SWORD = "SWORD"
     SEED = "SEED"
     CROP = "CROP"
 
 
 class Item:
-    def __init__(self, type: ItemType, id: int, name: str, stackable: bool, renderPos: str) -> None:
-        self.type = type
-        self.id = id
-        self.name = name
-        self.stackable = stackable
-        self.renderPos = renderPos
+    count = 0
+    
+    def __init__(self, item: dict[str, (str | int | float | bool)]) -> None:
+        try:
+            self.id = int(item["id"])
+            self.name = str(item["name"])
+            self.type = ItemType(item["type"])
+            self.renderPos = str(item["renderPos"])
+
+            stackable = False
+            if "stackable" in item:
+                stackable = bool(item["stackable"])
+            self.stackable = stackable
+            
+            if self.type == ItemType.CROP:
+                self.matures = int(item["matures"])
+                self.season = str(item["season"])
+            elif self.type == ItemType.SEED:
+                self.plants = int(item["plants"])
+        except Exception as e:
+            print(f"item {Item.count} is invalid")
+            print(e)
+        finally:
+            Item.count+=1
+
 
 
 class ItemStack:
@@ -35,17 +54,7 @@ class ItemStack:
 allItems = list[Item]()
 itemsJson = json.loads(open("./assets/items.json").read())
 for item in itemsJson:
-    stackable = False
-    if "stackable" in item:
-        stackable = item["stackable"]
-
-    allItems.append(Item(
-        ItemType(item["type"]),
-        item["id"],
-        item["name"],
-        stackable,
-        item["renderPos"],
-    ))
+    allItems.append(Item(item))
 
 
 def itemWithID(id: int):
