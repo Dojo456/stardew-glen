@@ -1,3 +1,4 @@
+import datetime
 import os
 import time
 from typing import Dict
@@ -240,6 +241,13 @@ class Game:
         self.clock = pygame.time.Clock()
         self.running = True
 
+        # Debug
+        now = datetime.datetime.today()
+        self.positionsDebugFile = open(
+            "./debug/" + now.strftime("%Y_%m_%d-%I_%M_%S_%p") + "-positions.csv", "w")
+        labels = ["time", "x", "y"]
+        self.positionsDebugFile.write(",".join(labels)+"\n")
+
     mouseReleased = True
 
     def captureInputs(self):
@@ -310,6 +318,10 @@ class Game:
             spriteY = playerPos.y
         elif (WORLD_HEIGHT - playerPos.y) < (HALF_DISPLAY.y + CELL_SIZE + CELL_SIZE):
             spriteY = DISPLAY_HEIGHT - (WORLD_HEIGHT - playerPos.y)
+
+        nums = [str(time.time_ns()), str(playerPos.x - spriteX),
+                str(playerPos.y - spriteY)]
+        self.positionsDebugFile.write(",".join(nums) + "\n")
 
         # Base
         self.image.blit(self.background, (0, 0),
@@ -398,6 +410,8 @@ class Game:
             self.update()
             self.render()
             self.clock.tick(FRAME_LIMIT)
+
+        self.positionsDebugFile.close()
 
 
 game = Game()

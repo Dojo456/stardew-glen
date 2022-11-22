@@ -13,8 +13,8 @@ from items import Item, ItemStack
 HITBOX_VEC = Vector2(CELL_SIZE /
                      2, CELL_SIZE * 1.5)
 
-CHARACTER_SPEED = 100
-ANIMATION_SPEED = 3.5
+CHARACTER_SPEED = 80
+ANIMATION_SPEED = 5
 
 
 class Coord:
@@ -284,6 +284,8 @@ class Character(object):
     def __handleMoveCharacter(self, scale: float, action: MoveCharacterAction):
         scaled = Vector2(action.x, action.y)
         scaled.scale_to_length(CHARACTER_SPEED * scale)
+
+        # print(str(scaled))
 
         horz = self.pos + Vector2(scaled.x, 0)
         vert = self.pos + Vector2(0, scaled.y)
