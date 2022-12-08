@@ -133,8 +133,8 @@ class ItemRenderer():
 
             image.blit(self.cropsTileSet, (1, 1), Rect(
                 renderPosX * CELL_SIZE * 8, (renderPosY * CELL_SIZE * 2) + CELL_SIZE, CELL_SIZE, CELL_SIZE))
-        elif item.type == ItemType.CROP:
-            renderPositions = item.renderPos.split(":")
+        elif spriteItem.type == ItemType.CROP:
+            renderPositions = spriteItem.renderPos.split(":")
             renderPos = int(renderPositions[0])
             col = int(renderPositions[1])
 
@@ -407,7 +407,7 @@ class Game:
         # Clock
         worldTime = self.world.time
         timeRepr = f"{int(worldTime / 20)}:{((worldTime % 20) * 5):02}"
-        coinsSurface = self.defaultFont.render(
+        coinsSurface = self.defaultFonts[16].render(
             timeRepr, False, color.RED4  # type: ignore
         )
         coinsRect = coinsSurface.get_rect()
