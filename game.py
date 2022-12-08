@@ -110,34 +110,47 @@ class ItemRenderer():
         self.cropsTileSet = pygame.image.load(
             "./assets/items/crops.png")
 
+        self.defaultFont = pygame.font.Font("./assets/font.ttf", 8)
+
     def getImage(self, item: Item | ItemStack):
-        image = pygame.Surface((CELL_SIZE, CELL_SIZE), pygame.SRCALPHA)
+        image = pygame.Surface((CELL_SIZE + 2, CELL_SIZE + 2), pygame.SRCALPHA)
 
-        if isinstance(item, ItemStack):
-            item = item.item
+        spriteItem = item
 
-        if item.type == ItemType.HOE:
-            renderPos = int(item.renderPos)
-            image.blit(self.toolsTileSet, (0, 0), Rect(
+        isStack = isinstance(spriteItem, ItemStack)
+        if isStack:
+            spriteItem = spriteItem.item
+
+        if spriteItem.type == ItemType.HOE:
+            renderPos = int(spriteItem.renderPos)
+            image.blit(self.toolsTileSet, (1, 1), Rect(
                 5 * CELL_SIZE, (2 + (renderPos * 2)) * CELL_SIZE, CELL_SIZE, CELL_SIZE))
-        elif item.type == ItemType.SEED:
-            renderPos = int(item.renderPos)
+        elif spriteItem.type == ItemType.SEED:
+            renderPos = int(spriteItem.renderPos)
 
             renderPosX = renderPos % 2
             renderPosY = renderPos / 2
 
-            image.blit(self.cropsTileSet, (0, 0), Rect(
+            image.blit(self.cropsTileSet, (1, 1), Rect(
                 renderPosX * CELL_SIZE * 8, (renderPosY * CELL_SIZE * 2) + CELL_SIZE, CELL_SIZE, CELL_SIZE))
-        elif item.type == ItemType.CROP:
-            renderPositions = item.renderPos.split("-")
+        elif spriteItem.type == ItemType.CROP:
+            renderPositions = spriteItem.renderPos.split("-")
             renderPos = int(renderPositions[0])
             col = int(renderPositions[1])
 
             renderPosX = renderPos % 2
             renderPosY = renderPos / 2
 
-            image.blit(self.cropsTileSet, (0, 0), Rect(
+            image.blit(self.cropsTileSet, (1, 1), Rect(
                 (renderPosX * CELL_SIZE * 8) + (col * CELL_SIZE), (renderPosY * CELL_SIZE * 2) + CELL_SIZE, CELL_SIZE, CELL_SIZE))
+
+        if isStack:
+            countSurface = self.defaultFont.render(
+                str(item.count), False, color.WHITE)
+            size = Vector2(countSurface.get_width(), countSurface.get_height())
+
+            image.blit(countSurface, Vector2(
+                CELL_SIZE + 2, CELL_SIZE + 2) - size)
 
         return image
 
@@ -221,7 +234,10 @@ class Game:
 
         self.background = pygame.image.load(
             "./assets/frog.png", "frog").convert()
-        self.defaultFont = pygame.font.Font("./assets/font.ttf", 16)
+        self.defaultFonts = list[pygame.font.Font]()
+        for i in range(17):
+            self.defaultFonts.append(
+                pygame.font.Font("./assets/font.ttf", i))
 
         self.inputs = InputStack()
         self.inputs.append(pygame.K_1)
@@ -294,7 +310,7 @@ class Game:
                 item = itemSelection
             elif isinstance(itemSelection, ItemStack):
                 item = itemSelection.item
-                
+
             if item != None:
                 if item.type == ItemType.HOE:
                     actions.append(HoeGroundAction(pos))
@@ -311,8 +327,12 @@ class Game:
         self.drawWorld()
         self.drawHUD()
 
+        pygame.transform.scale(
+            self.image, self.display.get_size(), self.display)
+        pygame.display.update()
+
     def drawWorld(self):
-                # Background
+        # Background
         self.image.fill(color.BLACK)
 
         playerPos = self.player.pos
@@ -348,8 +368,8 @@ class Game:
         self.image.blit(self.player.image(), (spriteX, spriteY))
 
     def drawHUD(self):
-          # FPS Counter
-        fpsSurface = self.defaultFont.render(
+        # FPS Counter
+        fpsSurface = self.defaultFonts[16].render(
             str(round(self.clock.get_fps())), False, color.GREEN)
         fpsRect = fpsSurface.get_rect()
         self.image.blit(
@@ -361,22 +381,30 @@ class Game:
         if isinstance(temp, ItemStack):
             count = temp.count
 
-        coinsSurface = self.defaultFont.render(
+        coinsSurface = self.defaultFonts[16].render(
             str(count), False, color.RED4  # type: ignore
         )
         coinsRect = coinsSurface.get_rect()
         self.image.blit(
             coinsSurface, (DISPLAY_WIDTH-coinsRect.width-5, 5), coinsRect)
 
-        self.image.fill(color.ORANGE2, Rect(66, DISPLAY_HEIGHT - 25, 252, 20))
+        # Inventory Bar
+        cellSize = CELL_SIZE + 2
+        slotSize = cellSize + 1
+        barWidth = 12 * (cellSize + 1)
+        xOffset = int((DISPLAY_WIDTH - barWidth) / 2)
+        yOffset = 25
+
+        self.image.fill(color.ORANGE2, Rect(
+            xOffset, DISPLAY_HEIGHT - 25, barWidth, cellSize))
 
         for i, item in enumerate(self.world.inventoryManager.currentItems):
             inventorySlotPos = Vector2(
-                66 + (i * 21), DISPLAY_HEIGHT - 25)
+                xOffset + (i * slotSize), DISPLAY_HEIGHT - yOffset)
 
             isSelection = i == self.world.inventoryManager.slotSelection
 
-            if isSelection:
+            if isSelection:  # is selected item, show white outline and flash
                 if self.inventoryChanged:
                     self.endInventoryChangeFlash = time.time_ns() + 3e8
 
@@ -385,33 +413,27 @@ class Game:
                                time.time_ns() - 15e7) / 1e9) ** 2) + 1
 
                     self.image.fill((int(255 * l), int(255 * l), int(255 * l)),
-                                    Rect(inventorySlotPos.x, inventorySlotPos.y, 20, 20))
+                                    Rect(inventorySlotPos.x, inventorySlotPos.y, cellSize, cellSize))
 
-            if item == None:
-                inventorySlotText = self.defaultFont.render(
-                    str(i), False, color.BLACK)
-                self.image.blit(inventorySlotText, inventorySlotPos +
-                                Vector2((20 - inventorySlotText.get_width()) / 2,
-                                        (20 - inventorySlotText.get_height()) / 2,
-                                        ))
-            else:
+            # outline
+            # outlinePos = Vector2(
+            #     xOffset - 1 + (i * slotSize), DISPLAY_HEIGHT - yOffset - 1)
+            # pygame.draw.rect(self.image, color.ORANGE4, Rect(
+            #     outlinePos.x, outlinePos.y, slotSize + 1, slotSize + 1), 1)
+
+            # standard render for item
+            inventorySlotText = self.defaultFonts[8].render(
+                str(i), False, color.BLACK)
+            self.image.blit(inventorySlotText, inventorySlotPos)
+
+            if item != None:
                 self.image.blit(self.itemRenderer.getImage(
-                    item), inventorySlotPos + Vector2(1, 1))
+                    item), inventorySlotPos)
 
-            outlinePos = Vector2(
-                65 + (i * 21), DISPLAY_HEIGHT - 26)
-            pygame.draw.rect(self.image, color.ORANGE4, Rect(
-                outlinePos.x, outlinePos.y, 22, 22), 1)
-
-        # Selection Outline
         outlinePos = Vector2(
-            65 + (self.world.inventoryManager.slotSelection * 21), DISPLAY_HEIGHT - 26)
-        pygame.draw.rect(self.image, color.YELLOW2, Rect(
-            outlinePos.x, outlinePos.y, 22, 22), 1)
-
-        pygame.transform.scale(
-            self.image, self.display.get_size(), self.display)
-        pygame.display.update()
+            xOffset - 1 + (self.world.inventoryManager.slotSelection * slotSize), DISPLAY_HEIGHT - yOffset - 1)
+        pygame.draw.rect(self.image, color.ORANGE4, Rect(
+            outlinePos.x, outlinePos.y, slotSize + 1, slotSize + 1), 1)
 
     def run(self):
         while self.running:
