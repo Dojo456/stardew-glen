@@ -11,10 +11,10 @@ import color
 import items
 from constants import *
 from controller import (Action, ChangeInventorySelectionAction, Character,
-                        CharacterState, Coord, HoeGroundAction, ItemStack,
-                        MoveCharacterAction, PlantSeedAction, Tile, TileType,
-                        World)
-from items import Item, ItemType
+                        CharacterState, Coord, CropTile, HoeGroundAction,
+                        IncrementDayAction, ItemStack, MoveCharacterAction,
+                        PlantSeedAction, Tile, TileType, World)
+from items import Item, ItemType, Seed
 
 os.environ['SDL_VIDEO_CENTERED'] = '1'
 
@@ -133,8 +133,8 @@ class ItemRenderer():
 
             image.blit(self.cropsTileSet, (1, 1), Rect(
                 renderPosX * CELL_SIZE * 8, (renderPosY * CELL_SIZE * 2) + CELL_SIZE, CELL_SIZE, CELL_SIZE))
-        elif spriteItem.type == ItemType.CROP:
-            renderPositions = spriteItem.renderPos.split("-")
+        elif item.type == ItemType.CROP:
+            renderPositions = item.renderPos.split(":")
             renderPos = int(renderPositions[0])
             col = int(renderPositions[1])
 
@@ -162,7 +162,6 @@ class DrawableCharacter(Character):
         self.identifier = identifier
         self.tileSet = pygame.image.load(tileSet).convert()
 
-        self.epoch = time.time_ns()
         self.tick = 0
         self.accumulated = 0
 
@@ -204,24 +203,48 @@ class DrawableWorld(World):
         self.overlayImage = pygame.Surface(
             (WORLD_WIDTH, WORLD_HEIGHT), pygame.SRCALPHA, 32)
 
+    def renderWorld(self):
+        self.overlayImage = pygame.Surface(
+            (WORLD_WIDTH, WORLD_HEIGHT), pygame.SRCALPHA, 32)
+
+        for (i, row) in enumerate(self._tiles):
+            for (j, tile) in enumerate(row):
+                pos = Coord(i, j)
+                if tile != None:
+                    if tile.type == TileType.TILLED_DIRT:
+                        self.overlayImage.blit(self.dirtTileSet, (pos.x * CELL_SIZE,
+                                                                  pos.y * CELL_SIZE), Rect(0, 0, CELL_SIZE, CELL_SIZE))
+                    elif isinstance(tile, CropTile):
+                        self.overlayImage.blit(self.dirtTileSet, (pos.x * CELL_SIZE,
+                                                                  pos.y * CELL_SIZE), Rect(0, 0, CELL_SIZE, CELL_SIZE))
+
+                        renderPos = tile.crop.renderPos.split(":")
+                        intPos = int(renderPos[0])
+                        posCounts = int(renderPos[2])
+
+                        renderX = (
+                            (intPos % 2) * 8) + round(((posCounts - 1) * tile.age) / tile.crop.matures)
+                        renderY = intPos / 2
+
+                        print(tile.age)
+
+                        self.overlayImage.blit(self.cropsTileSet, (pos.x * CELL_SIZE,
+                                                                   (pos.y - 1) * CELL_SIZE), Rect(renderX * CELL_SIZE, renderY * 2 * CELL_SIZE, CELL_SIZE, CELL_SIZE * 2))
+
     def setTile(self, pos: Coord, tile: Tile):
         super().setTile(pos, tile)
 
-        updatedTile = self.tileAt(pos)
-
-        if updatedTile != None:
-            if updatedTile.type == TileType.TILLED_DIRT:
-                self.overlayImage.blit(self.dirtTileSet, (pos.x * CELL_SIZE,
-                                                          pos.y * CELL_SIZE), Rect(0, 0, CELL_SIZE, CELL_SIZE))
-            elif updatedTile.type == TileType.CROP:
-                self.overlayImage.blit(self.cropsTileSet, (pos.x * CELL_SIZE,
-                                                           (pos.y) * CELL_SIZE), Rect(0, CELL_SIZE, CELL_SIZE, CELL_SIZE))
+        self.renderWorld()
 
     def removeTile(self, pos: Coord):
-        self.overlayImage.fill((0, 0, 0, 0), Rect(pos.x * CELL_SIZE,
-                                                  pos.y * CELL_SIZE, CELL_SIZE, CELL_SIZE))
+        super().removeTile(pos)
 
-        return super().removeTile(pos)
+        self.renderWorld()
+
+    def handleIncrementDayAction(self, action: IncrementDayAction):
+        super().handleIncrementDayAction(action)
+
+        self.renderWorld()
 
 
 class Game:
@@ -314,8 +337,14 @@ class Game:
             if item != None:
                 if item.type == ItemType.HOE:
                     actions.append(HoeGroundAction(pos))
-                elif item.type == ItemType.SEED:
+                elif isinstance(item, Seed):
                     actions.append(PlantSeedAction(pos, item))
+
+        if self.inputs.consume(pygame.K_x):
+            actions.append(IncrementDayAction())
+
+        if self.inputs.consume(pygame.K_c):
+            self.world.renderWorld()
 
         self.actions = actions
 
@@ -375,14 +404,11 @@ class Game:
         self.image.blit(
             fpsSurface, (0, DISPLAY_HEIGHT-fpsRect.height), fpsRect)
 
-        # Coin Counter
-        temp = self.world.inventoryManager.currentItems[2]
-        count = 0
-        if isinstance(temp, ItemStack):
-            count = temp.count
-
-        coinsSurface = self.defaultFonts[16].render(
-            str(count), False, color.RED4  # type: ignore
+        # Clock
+        worldTime = self.world.time
+        timeRepr = f"{int(worldTime / 20)}:{((worldTime % 20) * 5):02}"
+        coinsSurface = self.defaultFont.render(
+            timeRepr, False, color.RED4  # type: ignore
         )
         coinsRect = coinsSurface.get_rect()
         self.image.blit(

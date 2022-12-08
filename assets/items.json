@@ -9,14 +9,15 @@
         "id": 1,
         "name": "Parsnip Seeds",
         "type": "SEED",
-        "renderPos": 0,
+        "stackable": true,
+        "renderPos": "0",
         "plants": 2
     },
     {
         "id": 2,
         "name": "Parsnip",
         "type": "CROP",
-        "renderPos": "0-5",
+        "renderPos": "0:5:6",
         "stackable": true,
         "matures": 3,
         "season": "SPRING"

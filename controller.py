@@ -8,7 +8,7 @@ from shapely.ops import nearest_points  # type: ignore
 
 import items
 from constants import *
-from items import Item, ItemStack
+from items import Item, ItemStack, Seed
 
 HITBOX_VEC = Vector2(CELL_SIZE /
                      2, CELL_SIZE * 1.5)
@@ -93,15 +93,23 @@ class Tile:
     def __init__(self, type: TileType) -> None:
         self.type = type
 
-class CropTile(Tile):
-    def __init__(self, seed: Item) -> None:
-        if seed.type != items.ItemType.SEED:
-            raise ValueError("item must be of type SEED")
+    def update(self, elapsed: int):
+        """Provide the amount of time elapsed in game ticks. There are 480 game ticks in a day"""
+        pass
 
-        self.item = items.itemWithID(seed.plants)
+class CropTile(Tile):
+    def __init__(self, seed: Seed) -> None:
+        self.crop = seed.plants
+        self.age = 0
+        self.epoch: int | None = None
 
         super().__init__(TileType.CROP)
 
+    def update(self, elapsed: int):
+        if self.age < self.crop.matures:
+            self.age += elapsed / 480
+            
+            print(self.age)
 
 class Action:
     def __init__(self) -> None:
@@ -135,10 +143,7 @@ class HoeGroundAction(Action):
 
 
 class PlantSeedAction(Action):
-    def __init__(self, pos: Coord, seed: Item) -> None:
-        if seed.type != items.ItemType.SEED:
-            raise TypeError("must be of type SEED")
-
+    def __init__(self, pos: Coord, seed: Seed) -> None:
         super().__init__()
 
         self.pos = pos
@@ -161,10 +166,14 @@ class ChangeInventorySelectionAction(Action):
 
         self.selection = selection
 
+class IncrementDayAction(Action):
+    def __init__(self) -> None:
+        super().__init__()
+
 
 class World:
     def __init__(self) -> None:
-        self.__tiles: list[list[Tile | None]] = [
+        self._tiles: list[list[Tile | None]] = [
             [None] * int(WORLD_HEIGHT / CELL_SIZE) for _ in range(int(WORLD_WIDTH / CELL_SIZE))]
 
         self.mapData = load_pygame("./assets/tiled/minimap.tmx")
@@ -181,13 +190,32 @@ class World:
             "spawnPoint")
         self.spawnPoint = Vector2(spawnPoint.x, spawnPoint.y)
 
+        self.epoch = time.time_ns()
         self.queuedActions = list[Action]()
+
+        # Global world states
+        self.day = 0
+        self.time = 120
 
         # Global player states
         self.coins = 0
         self.inventoryManager = InventoryManager()
 
     def update(self, actions: list[Action]):
+        # update time
+        now = time.time_ns()
+        elapsed = now - self.epoch
+        
+        if elapsed > (7166666666): # same tick time as original, about seven seconds per ten minutes
+            self.time += 1
+            self.epoch = now
+
+            for row in self._tiles:
+                for tile in row:
+                    if tile != None:
+                        tile.update(1)
+
+        # handle update actions
         allActions = self.queuedActions + actions
         self.queuedActions = list[Action]()
 
@@ -200,14 +228,16 @@ class World:
                 self.handleChangeInventorySelectionAction(action)
             elif isinstance(action, AddItemAction):
                 self.handleAddItemAction(action)
+            elif isinstance(action, IncrementDayAction):
+                self.handleIncrementDayAction(action)
 
     def tileAt(self, pos: Coord):
-        return self.__tiles[pos.x][pos.y]
+        return self._tiles[pos.x][pos.y]
 
     def setTile(self, pos: Coord, tile: Tile):
         print(f"setting {tile.type} at {pos}")
 
-        self.__tiles[pos.x][pos.y] = tile
+        self._tiles[pos.x][pos.y] = tile
 
     def removeTile(self, pos: Coord):
         tile = self.tileAt(pos)
@@ -215,7 +245,7 @@ class World:
         if tile != None:
             print(f"removing {tile.type} at {pos}")
 
-        self.__tiles[pos.x][pos.y] = None
+        self._tiles[pos.x][pos.y] = None
 
     def handlePlantCropAction(self, action: PlantSeedAction):
         existing = self.tileAt(action.pos)
@@ -226,9 +256,10 @@ class World:
     def handleHoeGroundAction(self, action: HoeGroundAction):
         existing = self.tileAt(action.pos)
 
-        if existing != None and existing.type == TileType.CROP:  # if harvesting
-            self.removeTile(action.pos)
-            self.queuedActions.append(AddItemAction(items.itemWithID(2)))
+        if existing != None and isinstance(existing, CropTile):
+            if existing.age >= existing.crop.matures:  # if harvesting
+                self.removeTile(action.pos)
+                self.queuedActions.append(AddItemAction(items.itemWithID(2)))
         else:
             self.setTile(action.pos, Tile(TileType.TILLED_DIRT))
 
@@ -237,6 +268,15 @@ class World:
 
     def handleAddItemAction(self, action: AddItemAction):
         self.inventoryManager.addItem(action.item)
+
+    def handleIncrementDayAction(self, action: IncrementDayAction):
+        self.day += 1
+        self.time = 120
+
+        for row in self._tiles:
+            for tile in row:
+                if tile != None:
+                    tile.update(480)
 
 
 class Direction(enum.Enum):
